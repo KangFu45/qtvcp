@@ -107,6 +107,179 @@ double* LinuxcncStat::aout(){
     return double_array(this->status.motion.analog_output, EMCMOT_MAX_AIO);
 }
 
+LinuxcncStat::JointData LinuxcncStat::Stat_joint_one(int jointno){
+    LinuxcncStat::JointData data;
+    data.jointType = this->status.motion.joint[jointno].jointType;
+    data.units = this->status.motion.joint[jointno].units;
+    data.backlash = this->status.motion.joint[jointno].backlash;
+    data.min_position_limit = this->status.motion.joint[jointno].minPositionLimit;
+    data.max_position_limit = this->status.motion.joint[jointno].maxPositionLimit;
+    data.max_ferror = this->status.motion.joint[jointno].maxFerror;
+    data.min_ferror = this->status.motion.joint[jointno].minFerror;
+    data.ferror_current = this->status.motion.joint[jointno].ferrorCurrent;
+    data.ferror_highMark = this->status.motion.joint[jointno].ferrorHighMark;
+    data.output = this->status.motion.joint[jointno].output;
+    data.input = this->status.motion.joint[jointno].input;
+    data.velocity = this->status.motion.joint[jointno].velocity;
+    data.inpos = this->status.motion.joint[jointno].input;
+    data.homing = this->status.motion.joint[jointno].homing;
+    data.homed = this->status.motion.joint[jointno].homed;
+    data.fault = this->status.motion.joint[jointno].fault;
+    data.enabled = this->status.motion.joint[jointno].enabled;
+    data.min_soft_limit = this->status.motion.joint[jointno].minSoftLimit;
+    data.max_soft_limit = this->status.motion.joint[jointno].maxSoftLimit;
+    data.min_hard_limit = this->status.motion.joint[jointno].minHardLimit;
+    data.max_hard_limit = this->status.motion.joint[jointno].maxHardLimit;
+    data.override_limits = this->status.motion.joint[jointno].overrideLimits;
+    return data;
+}
+
+LinuxcncStat::JointData* LinuxcncStat::joint()
+{
+    LinuxcncStat::JointData* data = new LinuxcncStat::JointData[EMCMOT_MAX_JOINTS];
+    for(int i=0; i<EMCMOT_MAX_JOINTS; ++i)
+        data[i] = this->Stat_joint_one(i);
+    return data;
+}
+
+LinuxcncStat::AxisData LinuxcncStat::Stat_axis_one(int axisno)
+{
+    LinuxcncStat::AxisData data;
+    data.velocity = this->status.motion.axis[axisno].velocity;
+    data.min_position_limit = this->status.motion.axis[axisno].minPositionLimit;
+    data.max_position_limit = this->status.motion.axis[axisno].maxPositionLimit;
+    return data;
+}
+
+LinuxcncStat::AxisData* LinuxcncStat::axis()
+{
+    LinuxcncStat::AxisData* data = new LinuxcncStat::AxisData[EMCMOT_MAX_AXIS];
+    for(int i=0; i<EMCMOT_MAX_AXIS; ++i)
+        data[i] = this->Stat_axis_one(i);
+    return data;
+}
+
+LinuxcncStat::SpindleData LinuxcncStat::Stat_spindle_one(int spindleno)
+{
+    LinuxcncStat::SpindleData data;
+    data.brake = this->status.motion.spindle[spindleno].brake;
+    data.direction = this->status.motion.spindle[spindleno].direction;
+    data.enabled = this->status.motion.spindle[spindleno].enabled;
+    data.override_enabled = this->status.motion.spindle[spindleno].spindle_override_enabled;
+    data.speed = this->status.motion.spindle[spindleno].speed;
+    data.override = this->status.motion.spindle[spindleno].spindle_scale;
+    data.homed = this->status.motion.spindle[spindleno].homed;
+    data.orient_state = this->status.motion.spindle[spindleno].orient_state;
+    data.orient_fault = this->status.motion.spindle[spindleno].orient_fault;
+    return data;
+}
+
+LinuxcncStat::SpindleData* LinuxcncStat::spindle()
+{
+    LinuxcncStat::SpindleData* data = new LinuxcncStat::SpindleData[EMCMOT_MAX_SPINDLES];
+    for(int i=0; i<EMCMOT_MAX_SPINDLES; ++i)
+        data[i] = this->Stat_spindle_one(i);
+    return data;
+}
+
+int* LinuxcncStat::din(){
+    return int_array(this->status.motion.synch_di, EMCMOT_MAX_AIO);
+}
+
+int* LinuxcncStat::dout(){
+    return int_array(this->status.motion.synch_do, EMCMOT_MAX_AIO);
+}
+
+int* LinuxcncStat::activegcode(){
+    return int_array(this->status.task.activeGCodes, ACTIVE_G_CODES);
+}
+
+bool* LinuxcncStat::homed()
+{
+    bool* res = new bool[EMCMOT_MAX_JOINTS];
+    for(int i=0; i<EMCMOT_MAX_JOINTS; ++i)
+        res[i] = this->status.motion.joint[i].homed;
+    return res;
+}
+
+int* LinuxcncStat::limit()
+{
+    int* res = new int[EMCMOT_MAX_JOINTS];
+    for(int i=0; i<EMCMOT_MAX_JOINTS; ++i){
+        int v = 0;
+        if(this->status.motion.joint[i].minHardLimit) v |= 1;
+        if(this->status.motion.joint[i].maxHardLimit) v |= 2;
+        if(this->status.motion.joint[i].minSoftLimit) v |= 4;
+        if(this->status.motion.joint[i].maxSoftLimit) v |= 8;
+        res[i] = v;
+    }
+    return res;
+}
+
+int* LinuxcncStat::activemcode(){
+    return int_array(this->status.task.activeMCodes, ACTIVE_M_CODES);
+}
+
+double* LinuxcncStat::g5x_offset(){
+    return pose(this->status.task.g5x_offset);
+}
+
+int LinuxcncStat::g5x_index(){
+    return this->status.task.g5x_index;
+}
+
+double* LinuxcncStat::g92_offset(){
+    return pose(this->status.task.g92_offset);
+}
+
+double* LinuxcncStat::position(){
+    return pose(this->status.motion.traj.position);
+}
+
+double* LinuxcncStat::dtg(){
+    return pose(this->status.motion.traj.dtg);
+}
+
+double* LinuxcncStat::joint_position()
+{
+    double* res = new double[EMCMOT_MAX_JOINTS];
+    for(int i=0; i<EMCMOT_MAX_JOINTS; ++i)
+        res[i] = this->status.motion.joint[i].output;
+    return res;
+}
+
+double* LinuxcncStat::joint_actual_position()
+{
+    double* res = new double[EMCMOT_MAX_JOINTS];
+    for(int i=0; i<EMCMOT_MAX_JOINTS; ++i)
+        res[i] = this->status.motion.joint[i].input;
+    return res;
+}
+
+double* LinuxcncStat::probed_position(){
+    return pose(this->status.motion.traj.probedPosition);
+}
+
+double* LinuxcncStat::settings(){
+    return double_array(this->status.task.activeSettings,ACTIVE_SETTINGS);
+}
+
+double* LinuxcncStat::tool_offset(){
+    return pose(this->status.task.toolOffset);
+}
+
+CANON_TOOL_TABLE* LinuxcncStat::tool_table()
+{
+    CANON_TOOL_TABLE* res = new CANON_TOOL_TABLE[CANON_POCKETS_MAX];
+    for(int i=0; i<CANON_POCKETS_MAX; ++i)
+        res[i] = this->status.io.tool.toolTable[i];
+    return res;
+}
+
+int LinuxcncStat::axes(){
+    return this->status.motion.traj.deprecated_axes;
+}
+
 //-------------------------------------------
 
 
