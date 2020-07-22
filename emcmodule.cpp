@@ -6,7 +6,7 @@
 
 LinuxcncIni::LinuxcncIni(const char* inifile)
 {
-    if(this->i == NULL)
+    if(this->i == nullptr)
         this->i = new IniFile();
 
     if(!this->i->Open(inifile)) { std::cerr << "error: IniFile.Open(" <<inifile <<") failed!\n"; abort();}
@@ -16,7 +16,7 @@ const char* LinuxcncIni::Ini_find(const char *tag, const char *section)
 {
     int num = 1;
     const char* out = this->i->Find(section,tag,num);
-    if(out == NULL) return NULL;
+    if(out == nullptr) return nullptr;
     return out;
 }
 
@@ -28,7 +28,7 @@ std::vector<const char*> LinuxcncIni::Ini_findall(const char *tag, const char *s
     std::vector<const char*> result;
     while (1) {
         out = this->i->Find(section,tag,num);
-        if(out == NULL) break;
+        if(out == nullptr) break;
         result.emplace_back(out);
         ++num;
     }
@@ -53,7 +53,7 @@ LinuxcncStat::LinuxcncStat()
     char* file = get_nmlfile();
 
     RCS_STAT_CHANNEL* c = new RCS_STAT_CHANNEL(emcFormat, "emcStatus", "xemc", file);
-    if(!this->c) {std::cerr << "error: linuxcnc stat init failed!\n"; return;}
+    if(!c) {std::cerr << "error: linuxcnc stat init failed!\n"; return;}
 
     this->c = c;
 }
@@ -363,7 +363,7 @@ bool LinuxcncCommand::mode(EMC_TASK_MODE_ENUM mode)
             case EMC_TASK_MODE_AUTO:
                 break;
             default:
-                std::cerr<< "erroe: Mode should be MODE_MDI, MODE_MANUAL, or MODE_AUTO";
+                std::cerr<< "error: Mode should be MODE_MDI, MODE_MANUAL, or MODE_AUTO";
                 return false;
     }
     emcSendCommand(m);
@@ -384,6 +384,408 @@ void LinuxcncCommand::unhome(int joint)
     emcSendCommand(m);
 }
 
+void LinuxcncCommand::debug(int level)
+{
+    EMC_SET_DEBUG d;
+    d.debug = level;
+    emcSendCommand(d);
+}
+
+void LinuxcncCommand::teleop_enable(int enable)
+{
+    EMC_TRAJ_SET_TELEOP_ENABLE en;
+    en.enable = enable;
+    emcSendCommand(en);
+}
+
+void LinuxcncCommand::traj_mode(EMC_TRAJ_MODE_ENUM mode)
+{
+    EMC_TRAJ_SET_MODE mo;
+    mo.mode = mode;
+    emcSendCommand(mo);
+}
+
+bool LinuxcncCommand::state(EMC_TASK_STATE_ENUM state)
+{
+    EMC_TASK_SET_STATE m;
+    m.state = state;
+    switch(m.state){
+        case EMC_TASK_STATE_ESTOP:
+        case EMC_TASK_STATE_ESTOP_RESET:
+        case EMC_TASK_STATE_ON:
+        case EMC_TASK_STATE_OFF:
+            break;
+        default:
+            std::cerr<< "error: Machine state should be STATE_ESTOP, STATE_ESTOP_RESET, STATE_ON, or STATE_OFF ";
+            return false;
+    }
+    emcSendCommand(m);
+    return true;
+}
+
+void LinuxcncCommand::feedrate(double scale)
+{
+    EMC_TRAJ_SET_SCALE m;
+    m.scale = scale;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::rapidrate(double scale)
+{
+    EMC_TRAJ_SET_RAPID_SCALE m;
+    m.scale = scale;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::maxvel(double vel)
+{
+    EMC_TRAJ_SET_MAX_VELOCITY m;
+    m.velocity = vel;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::spindleoverride(double scale, int spindle)
+{
+    EMC_TRAJ_SET_SPINDLE_SCALE m;
+    m.scale = scale;
+    m.spindle = spindle;
+    emcSendCommand(m);
+}
+
+bool LinuxcncCommand::spindle(int dir, double arg1, double arg2)
+{
+    switch (dir) {
+    case LOCAL_SPINDLE_FORWARD:
+    case LOCAL_SPINDLE_REVERSE:
+    {
+        EMC_SPINDLE_ON m;
+        m.speed = dir * arg1;
+        m.spindle = (int)arg2;
+        emcSendCommand(m);
+    }
+        break;
+    case LOCAL_SPINDLE_INCREASE:
+    {
+        EMC_SPINDLE_INCREASE m;
+        m.spindle = (int)arg1;
+        emcSendCommand(m);
+    }
+        break;
+    case LOCAL_SPINDLE_DECREASE:
+    {
+        EMC_SPINDLE_DECREASE m;
+        m.spindle = (int)arg1;
+        emcSendCommand(m);
+    }
+        break;
+    case LOCAL_SPINDLE_CONSTANT:
+    {
+        EMC_SPINDLE_CONSTANT m;
+        m.spindle = (int)arg1;
+        emcSendCommand(m);
+    }
+        break;
+    case LOCAL_SPINDLE_OFF:
+    {
+        EMC_SPINDLE_OFF m;
+        m.spindle = (int)arg1;
+        emcSendCommand(m);
+    }
+        break;
+    default:
+        std::cerr<<"error: Spindle direction should be SPINDLE_FORWARD, SPINDLE_REVERSE, SPINDLE_OFF, SPINDLE_INCREASE, SPINDLE_DECREASE, or SPINDLE_CONSTANT";
+        return false;
+    }
+    return true;
+}
+
+void LinuxcncCommand::tool_offset(int toolno, double tranz, double tranx, double diameter,
+                 double frontangle, double backangle, int orientation)
+{
+    EMC_TOOL_SET_OFFSET m;
+    m.toolno = toolno;
+    m.offset.tran.z = tranz;
+    m.offset.tran.x = tranx;
+    m.diameter = diameter;
+    m.frontangle = frontangle;
+    m.backangle = backangle;
+    m.orientation = orientation;
+    emcSendCommand(m);
+}
+
+bool LinuxcncCommand::mist(int dir)
+{
+    switch (dir) {
+    case LOCAL_MIST_ON:
+    {
+        EMC_COOLANT_MIST_ON m;
+        emcSendCommand(m);
+    }
+        break;
+    case LOCAL_MIST_OFF:
+    {
+        EMC_COOLANT_MIST_OFF m;
+        emcSendCommand(m);
+    }
+        break;
+    default:
+        std::cerr<<"error: Mist should be MIST_ON or MIST_OFF";
+        return false;
+    }
+    return true;
+}
+
+bool LinuxcncCommand::flood(int dir)
+{
+    switch (dir) {
+    case LOCAL_FLOOD_ON:
+    {
+        EMC_COOLANT_FLOOD_ON m;
+        emcSendCommand(m);
+    }
+        break;
+    case LOCAL_FLOOD_OFF:
+    {
+        EMC_COOLANT_FLOOD_OFF m;
+        emcSendCommand(m);
+    }
+        break;
+    default:
+        std::cerr<<"error: FLOOD should be FLOOD_ON or FLOOD_OFF";
+        return false;
+    }
+    return true;
+}
+
+bool LinuxcncCommand::brake(int dir, int spindle)
+{
+    switch (dir) {
+    case LOCAL_BRAKE_ENGAGE:
+    {
+        EMC_SPINDLE_BRAKE_ENGAGE m;
+        m.spindle = spindle;
+        emcSendCommand(m);
+    }
+        break;
+    case LOCAL_BRAKE_RELEASE:
+    {
+        EMC_SPINDLE_BRAKE_RELEASE m;
+        m.spindle = spindle;
+        emcSendCommand(m);
+    }
+        break;
+    default:
+        std::cerr<<"error: BRAKE should be BRAKE_ENGAGE or BRAKE_RELEASE";
+        return false;
+    }
+    return true;
+}
+
+void LinuxcncCommand::load_tool_table()
+{
+    EMC_TOOL_LOAD_TOOL_TABLE m;
+    m.file[0] = '\0';
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::abort()
+{
+    EMC_TASK_ABORT m;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::task_plan_synch()
+{
+    EMC_TASK_PLAN_SYNCH synch;
+    emcSendCommand(synch);
+}
+
+void LinuxcncCommand::override_limits()
+{
+    EMC_JOINT_OVERRIDE_LIMITS m;
+    m.joint = 0;
+    emcSendCommand(m);
+}
+
+bool LinuxcncCommand::jog(int fn, int ja_value, int jjogmode, double vel, double inc)
+{
+    if(fn == LOCAL_JOG_STOP){
+        EMC_JOG_STOP abort;
+        abort.joint_or_axis = ja_value;
+        abort.jjogmode = jjogmode;
+        emcSendCommand(abort);
+    }else if(fn == LOCAL_JOG_CONTINUOUS){
+        EMC_JOG_CONT cont;
+        cont.joint_or_axis = ja_value;
+        cont.vel = vel;
+        cont.jjogmode = jjogmode;
+        emcSendCommand(cont);
+    }else if(fn ==LOCAL_JOG_INCREMENT){
+        EMC_JOG_INCR incr;
+        incr.joint_or_axis = ja_value;
+        incr.vel = vel;
+        incr.incr = inc;
+        incr.jjogmode = jjogmode;
+        emcSendCommand(incr);
+    }else{
+        std::cerr<<"error: jog() first argument must be JOG_xxx";
+        return false;
+    }
+    return true;
+}
+
+void LinuxcncCommand::reset_interpreter()
+{
+    EMC_TASK_PLAN_INIT m;
+    emcSendCommand(m);
+}
+
+bool LinuxcncCommand::program_open(char* file, int len)
+{
+    EMC_TASK_PLAN_CLOSE m0;
+    emcSendCommand(m0);
+
+    EMC_TASK_PLAN_OPEN m;
+    if(unsigned(len) > sizeof(m.file) - 1){
+        std::cerr << "error: File name limited to "<< sizeof(m.file) - 1 <<" characters";
+        return false;
+    }
+    rtapi_strxcpy(m.file, file);
+    emcSendCommand(m);
+    return true;
+}
+
+bool LinuxcncCommand::emcauto(int fn, int line)
+{
+    switch (fn) {
+    case LOCAL_AUTO_RUN:
+    {
+        EMC_TASK_PLAN_RUN run;
+        run.line = line;
+        emcSendCommand(run);
+    }
+        break;
+    case LOCAL_AUTO_PAUSE:
+    {
+        EMC_TASK_PLAN_PAUSE pause;
+        emcSendCommand(pause);
+    }
+        break;
+    case LOCAL_AUTO_RESUME:
+    {
+        EMC_TASK_PLAN_REVERSE resume;
+        emcSendCommand(resume);
+    }
+        break;
+    case LOCAL_AUTO_STEP:
+    {
+        EMC_TASK_PLAN_STEP step;
+        emcSendCommand(step);
+    }
+        break;
+    case LOCAL_AUTO_REVERSE:
+    {
+        EMC_TASK_PLAN_REVERSE reverse;
+        emcSendCommand(reverse);
+    }
+        break;
+    case LOCAL_AUTO_FORWARD:
+    {
+        EMC_TASK_PLAN_FORWARD forward;
+        emcSendCommand(forward);
+    }
+        break;
+    default:
+        std::cerr <<"error: Unexpected argument "<<fn<<" to command.auto";
+        return false;
+    }
+    return true;
+}
+
+void LinuxcncCommand::set_optional_stop(int state)
+{
+    EMC_TASK_PLAN_SET_OPTIONAL_STOP m;
+    m.state = state;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::set_block_delete(int state)
+{
+    EMC_TASK_PLAN_SET_BLOCK_DELETE m;
+    m.state = state;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::set_min_limit(int joint, double limit)
+{
+    EMC_JOINT_SET_MIN_POSITION_LIMIT m;
+    m.joint = joint;
+    m.limit = limit;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::set_max_limit(int joint, double limit)
+{
+    EMC_JOINT_SET_MAX_POSITION_LIMIT m;
+    m.joint = joint;
+    m.limit = limit;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::set_feed_override(bool mode)
+{
+    EMC_TRAJ_SET_FO_ENABLE m;
+    m.mode = mode;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::set_spindle_override(bool mode, int spindle)
+{
+    EMC_TRAJ_SET_SO_ENABLE m;
+    m.mode = mode;
+    m.spindle = spindle;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::set_feed_hold(bool mode)
+{
+    EMC_TRAJ_SET_FH_ENABLE m;
+    m.mode = mode;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::set_adaptive_feed(bool status)
+{
+    EMC_MOTION_ADAPTIVE m;
+    m.status = status;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::set_digital_output(bool index, bool start)
+{
+    EMC_MOTION_SET_DOUT m;
+    m.index = index;
+    m.start = start;
+    m.now = 1;
+    emcSendCommand(m);
+}
+
+void LinuxcncCommand::set_analog_output(bool index, double start)
+{
+    EMC_MOTION_SET_AOUT m;
+    m.index = index;
+    m.start = start;
+    m.now = 1;
+    emcSendCommand(m);
+}
+
+int LinuxcncCommand::wait_complete()
+{
+    double timeout = EMC_COMMAND_TIMEOUT;
+    //TODO:
+    return emcWaitCommandComplete(timeout);
+}
+
 //-------------------------------------------------
 
 //------------------LinuxcncError------------------
@@ -402,7 +804,7 @@ char* LinuxcncError::Error_poll()
 {
     if(this->c->valid()){std::cerr<<"error: Error buffer invalid!"; return NULL;}
     NMLTYPE type = this->c->read();
-    if(type == 0) return "";
+    if(type == 0) return nullptr;
 
     //don't return error type now
     char* r;

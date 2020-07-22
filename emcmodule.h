@@ -70,7 +70,7 @@ public:
     const char* Ini_find(const char *tag, const char *section);
     std::vector<const char*> Ini_findall(const char *tag, const char *section);
 
-    IniFile* i =  NULL;
+    IniFile* i =  nullptr;
 };
 
 class LinuxcncStat
@@ -105,9 +105,9 @@ public:
     int task_paused() {return this->status.task.task_paused; }
     bool input_timeout() {return this->status.task.input_timeout; }
     double rotation_xy() {return this->status.task.rotation_xy; }
-    double x_rotation_normal() {return this->status.task.x_rotation_normal; }
-    double y_rotation_normal() {return this->status.task.y_rotation_normal; }
-    double z_rotation_normal() {return this->status.task.z_rotation_normal; }
+    //double x_rotation_normal() {return this->status.task.x_rotation_normal; }
+    //double y_rotation_normal() {return this->status.task.y_rotation_normal; }
+    //double z_rotation_normal() {return this->status.task.z_rotation_normal; }
     double delay_left() {return this->status.task.delayLeft; }
     int queued_mdi_commands() {return this->status.task.queuedMDIcommands; }
 
@@ -234,7 +234,7 @@ public:
     int axes();
 
 private:
-    RCS_STAT_CHANNEL* c = NULL;
+    RCS_STAT_CHANNEL* c = nullptr;
     EMC_STAT status;
 
     JointData Stat_joint_one(int jointno);
@@ -249,8 +249,8 @@ public:
     ~LinuxcncCommand() { delete c; }
 
 private:
-    RCS_CMD_CHANNEL* c = NULL;
-    RCS_STAT_CHANNEL* s = NULL;
+    RCS_CMD_CHANNEL* c = nullptr;
+    RCS_STAT_CHANNEL* s = nullptr;
     int serial;
 
     int emcWaitCommandComplete(double timeout);
@@ -258,10 +258,44 @@ private:
 
 public:
     //Command_methods in emcmodule for python
+    void debug(int level);
+    void teleop_enable(int enable);
+    void traj_mode(EMC_TRAJ_MODE_ENUM mode);
+    bool state(EMC_TASK_STATE_ENUM state);
     bool mdi(char* cmd, int len);
     bool mode(EMC_TASK_MODE_ENUM mode);
+    void feedrate(double scale);
+    void rapidrate(double scale);
+    void maxvel(double vel);
+    void spindleoverride(double scale, int spindle);
+    bool spindle(int dir, double arg1, double arg2);
+    void tool_offset(int toolno, double tranz, double tranx, double diameter,
+                     double frontangle, double backangle, int orientation);
+    bool mist(int dir);
+    bool flood(int dir);
+    bool brake(int dir, int spindle);
+    void load_tool_table();
+    void abort();
+    void task_plan_synch();
+    void override_limits();
     void home(int joint);
     void unhome(int joint);
+    bool jog(int fn, int ja_value, int jjogmode, double vel=0, double inc=0);
+    void reset_interpreter();
+    bool program_open(char* file, int len);
+    bool emcauto(int fn, int line = -1);
+    void set_optional_stop(int state);
+    void set_block_delete(int state);
+    void set_min_limit(int joint, double limit);
+    void set_max_limit(int joint, double limit);
+    void set_feed_override(bool mode);
+    void set_spindle_override(bool mode, int spindle);
+    void set_feed_hold(bool mode);
+    void set_adaptive_feed(bool status);
+    void set_digital_output(bool index, bool start);
+    void set_analog_output(bool index, double start);
+
+    int wait_complete();
 };
 
 class LinuxcncError
@@ -273,5 +307,5 @@ public:
     char* Error_poll();
 
 private:
-    NML* c = NULL;
+    NML* c = nullptr;
 };
