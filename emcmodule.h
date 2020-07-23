@@ -88,10 +88,10 @@ public:
     int state() {return this->status.status; }
 
     //task
-    int task_mode() {return this->status.task.mode; }
-    int task_state() {return this->status.task.state; }
+    EMC_TASK_MODE_ENUM task_mode() {return this->status.task.mode; }
+    EMC_TASK_STATE_ENUM task_state() {return this->status.task.state; }
     int exec_state() {return this->status.task.execState; }
-    int interp_state() {return this->status.task.interpState; }
+    EMC_TASK_INTERP_ENUM interp_state() {return this->status.task.interpState; }
     int call_level() {return this->status.task.callLevel; }
     int read_line() {return this->status.task.readLine; }
     int motion_line() {return this->status.task.motionLine; }
@@ -232,6 +232,8 @@ public:
     double* tool_offset();
     CANON_TOOL_TABLE* tool_table();
     int axes();
+
+    bool pose_equal(double* p1, double* p2);
 
 private:
     RCS_STAT_CHANNEL* c = nullptr;

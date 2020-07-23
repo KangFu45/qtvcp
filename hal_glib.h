@@ -3,10 +3,15 @@
 
 #include <QObject>
 
+#define QT_NO_GEOM_VARIANT
+
 #include <string>
 #include <vector>
 
 #include "emcmodule.h"
+
+//TODO: PI isn't here
+const auto PI = 3.141592653589793238;
 
 typedef std::vector<std::string> strings;//TODO:move to header file
 
@@ -33,9 +38,9 @@ public:
     void forced_update();
 
     struct GStatData {
-        int state;
-        int mode;
-        int interp;
+        EMC_TASK_STATE_ENUM state;
+        EMC_TASK_MODE_ENUM mode;
+        EMC_TASK_INTERP_ENUM interp;
         char* file;
         bool paused;
         int line;
@@ -43,7 +48,7 @@ public:
         int tool_in_spindle;
         int tool_prep_number;
         int motion_mode;
-        double override;
+        double spindle_or;
         double feed_or;
         double rapid_or;
         double max_velocity_or;
@@ -60,7 +65,7 @@ public:
         double* current_tool_offset;
         unsigned char* override_limits;
         bool override_limits_set;
-        bool override_limits_tripped;
+        bool hard_limits_tripped;
         unsigned char* hard_limit_list;
         bool itime;
         bool fpm;
@@ -74,11 +79,19 @@ public:
         std::string g_code;
         std::string m_code;
         CANON_TOOL_TABLE tool_info;
-    }old;
+    }fresh;
 
 private:
     bool status_active = false;
     bool is_all_homed = false;
+
+    //helper function
+    void STATES(EMC_TASK_STATE_ENUM state);
+    void MODES(EMC_TASK_MODE_ENUM mode);
+    void INTERP(EMC_TASK_INTERP_ENUM interp);
+
+    double* get_rel_position(double* act_position, double* g5x_offset
+                             , double* tool_offset, double* g92_offset);
 
 private slots:
     void update();
@@ -90,13 +103,13 @@ signals:
     void state_on();
     void state_off();
 
-    void homed();
-    void unhomed();
+    void homed(int);
+    void unhomed(int);
     void all_homed();
-    void not_all_homed();
-    void override_limits_changed();
+    void not_all_homed(const char*);
+    void override_limits_changed(bool, unsigned char*);
 
-    void hard_limits_tripped();
+    void hard_limits_tripped(bool, unsigned char*);
 
     void mode_manual();
     void mode_auto();
@@ -116,51 +129,51 @@ signals:
     void joint_selection_changed();
     void axis_selection_changed();
 
-    void program_pause_changed();
-    void optional_stop_changed();
-    void block_delete_changed();
+    void program_pause_changed(bool);
+    void optional_stop_changed(bool);
+    void block_delete_changed(bool);
 
-    void file_loaded();
+    void file_loaded(char*);
     void reload_display();
-    void line_changed();
+    void line_changed(int);
 
-    void tool_in_spindle_changed();
-    void tool_prep_changed();
+    void tool_in_spindle_changed(int);
+    void tool_prep_changed(int);
     void tool_info_changed();
-    void current_tool_offset();
+    void current_tool_offset(double*);
 
-    void motion_mode_changed();
-    void spindle_control_changed();
-    void current_feed_rate();
-    void current_x_rel_position();
-    void current_position();
+    void motion_mode_changed(int);
+    void spindle_control_changed(bool, int);
+    void current_feed_rate(double);
+    void current_x_rel_position(double);
+    void current_position(double* ,double*, double*, double*);
 
-    void current_z_rotation();
-    void requested_spindle_speed_changed();
-    void actual_spindle_speed_changed();
+    void current_z_rotation(double);
+    void requested_spindle_speed_changed(double);
+    void actual_spindle_speed_changed(double);
 
-    void spindle_override_changed();
-    void feed_override_changed();
-    void rapid_override_changed();
-    void max_velocity_override_changed();
+    void spindle_override_changed(double);
+    void feed_override_changed(double);
+    void rapid_override_changed(double);
+    void max_velocity_override_changed(double);
 
-    void feed_hold_enable_changed();
+    void feed_hold_enable_changed(bool);
 
-    void itime_mode();
-    void fpm_mode();
-    void fpr_mode();
-    void css_mode();
-    void rpm_mode();
-    void radius_mode();
-    void diameter_mode();
-    void flood_changed();
-    void mist_changed();
+    void itime_mode(bool);
+    void fpm_mode(bool);
+    void fpr_mode(bool);
+    void css_mode(bool);
+    void rpm_mode(bool);
+    void radius_mode(bool);
+    void diameter_mode(bool);
+    void flood_changed(int);
+    void mist_changed(int);
 
-    void m_code_changed();
-    void g_code_changed();
+    void m_code_changed(const char*);
+    void g_code_changed(const char*);
 
-    void metric_mode_changed();
-    void user_system_changed();
+    void metric_mode_changed(bool);
+    void user_system_changed(int);
 
     void mdi_line_selected();
     void gcode_line_selected();
