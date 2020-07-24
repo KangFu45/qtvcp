@@ -132,19 +132,19 @@ void _GStat::merge()
     //active G code
     int* gcodedata = this->stat->activegcode();//manual delete
     strings active_gcodes;
-    std::string codes = "";
+    string codes = "";
     for(int i=0; i<ACTIVE_G_CODES; ++i){
         if(i%10 == 0)
-            active_gcodes.emplace_back(std::string("G"+std::to_string(gcodedata[i]/10)));
+            active_gcodes.emplace_back(string("G"+to_string(gcodedata[i]/10)));
         else
-            active_gcodes.emplace_back(std::string("G"+std::to_string(gcodedata[i]/10)+"."+std::to_string(gcodedata[i]%10)));
+            active_gcodes.emplace_back(string("G"+to_string(gcodedata[i]/10)+"."+to_string(gcodedata[i]%10)));
         codes += active_gcodes.back() + " ";
     }
     this->fresh.g_code = codes;
     //extract specific G code modes
     bool itime , fpm , fpr , css , rpm , metric = false;
     bool radius , diameter = false;
-    foreach (const std::string& i, active_gcodes) {
+    foreach (const string& i, active_gcodes) {
         if(i == "G93") itime = true;
         else if(i == "G94") fpm = true;
         else if(i == "G95") fpr = true;
@@ -167,9 +167,9 @@ void _GStat::merge()
     //active M codes
     int* mcodedata = this->stat->activemcode();//manual delete
     strings active_mcodes;
-    std::string mcodes = "";
+    string mcodes = "";
     for(int i=0; i<ACTIVE_M_CODES; ++i){
-        active_mcodes.emplace_back(std::string("M"+std::to_string(mcodedata[i])));
+        active_mcodes.emplace_back(string("M"+to_string(mcodedata[i])));
         mcodes += active_mcodes.back() + " ";
     }
     this->fresh.m_code = mcodes;
@@ -270,7 +270,7 @@ void _GStat::update()
     //if a joint is homed send 'homed' (with a string of homed joint number)
     if(this->fresh.homed != rot.homed){
         int homed_joints = 0;
-        std::string unhomed_joints = "";
+        string unhomed_joints = "";
         bool* homeds = this->stat->homed();//manual delete
         for(int i=0; i<this->stat->joints(); ++i){
             if(homeds[i]){
@@ -279,7 +279,7 @@ void _GStat::update()
             }
             else{
                 emit this->unhomed(i);
-                unhomed_joints += std::to_string(i);
+                unhomed_joints += to_string(i);
             }
         }
         if(homed_joints == this->stat->joints()){
@@ -315,7 +315,7 @@ void _GStat::update()
 
     //calculate position offsets (native units)
     double* relp = this->get_rel_position(act_positions, g5x_offsets, tool_offsets, g92_offsets);
-    emit this->current_position(act_positions, relp, dtg, joint_act_positions);
+    emit this->current_position(act_positions, relp, dtg, joint_act_positions);//manual delete ptr in slot function
 
     //spindle control
     if((this->fresh.spindle_enabled != rot.spindle_enabled)
@@ -429,8 +429,8 @@ double* _GStat::get_rel_position(double* act_position, double* g5x_offset
 
     if(this->stat->rotation_xy() != 0){
         double t = radians(this->stat->rotation_xy());
-        double xr = x*std::cos(t) - y*std::sin(t);
-        double yr = x*std::sin(t) - y*std::cos(t);
+        double xr = x*cos(t) - y*sin(t);
+        double yr = x*sin(t) - y*cos(t);
         x = xr;
         y = yr;
     }

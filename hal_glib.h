@@ -5,15 +5,12 @@
 
 #define QT_NO_GEOM_VARIANT
 
-#include <string>
 #include <vector>
 
 #include "emcmodule.h"
 
 //TODO: PI isn't here
 const auto PI = 3.141592653589793238;
-
-typedef std::vector<std::string> strings;//TODO:move to header file
 
 class _GStat : public QObject
 {
@@ -76,8 +73,8 @@ public:
         bool radius;
         bool diameter;
         double spindle_speed;
-        std::string g_code;
-        std::string m_code;
+        string g_code;
+        string m_code;
         CANON_TOOL_TABLE tool_info;
     }fresh;
 

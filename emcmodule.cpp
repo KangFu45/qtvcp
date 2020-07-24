@@ -9,26 +9,26 @@ LinuxcncIni::LinuxcncIni(const char* inifile)
     if(this->i == nullptr)
         this->i = new IniFile();
 
-    if(!this->i->Open(inifile)) { std::cerr << "error: IniFile.Open(" <<inifile <<") failed!\n"; abort();}
+    if(!this->i->Open(inifile)) { cerr << "error: IniFile.Open(" <<inifile <<") failed!\n"; abort();}
 }
 
-const char* LinuxcncIni::Ini_find(const char *tag, const char *section)
+string LinuxcncIni::Ini_find(const char *tag, const char *section, string def)
 {
     int num = 1;
-    const char* out = this->i->Find(section,tag,num);
-    if(out == nullptr) return nullptr;
-    return out;
+    string out = this->i->Find(section,tag,num);
+    if(out.empty()) return def;
+    return string(out);
 }
 
-std::vector<const char*> LinuxcncIni::Ini_findall(const char *tag, const char *section)
+strings LinuxcncIni::Ini_findall(const char *tag, const char *section)
 {
-    const char* out;
+    string out;
     int num = 1;
 
-    std::vector<const char*> result;
+    strings result;
     while (1) {
         out = this->i->Find(section,tag,num);
-        if(out == nullptr) break;
+        if(out.empty()) break;
         result.emplace_back(out);
         ++num;
     }
@@ -42,7 +42,7 @@ static char* get_nmlfile() { return EMC2_DEFAULT_NMLFILE; }
 //--------------------
 static bool check_stat(RCS_STAT_CHANNEL* emcStatusBuffer){
     if(!emcStatusBuffer->valid()){
-        std::cerr << "error: emcStatusBuffer invalid err=" << emcStatusBuffer->error_type;
+        cerr << "error: emcStatusBuffer invalid err=" << emcStatusBuffer->error_type;
         return false;
     }
     return true;
@@ -53,7 +53,7 @@ LinuxcncStat::LinuxcncStat()
     char* file = get_nmlfile();
 
     RCS_STAT_CHANNEL* c = new RCS_STAT_CHANNEL(emcFormat, "emcStatus", "xemc", file);
-    if(!c) {std::cerr << "error: linuxcnc stat init failed!\n"; return;}
+    if(!c) {cerr << "error: linuxcnc stat init failed!\n"; return;}
 
     this->c = c;
 }
@@ -306,10 +306,10 @@ LinuxcncCommand::LinuxcncCommand()
     char* file = get_nmlfile();
 
     RCS_CMD_CHANNEL* c = new RCS_CMD_CHANNEL(emcFormat, "emcCommand", "xemc", file);
-    if(!c){ std::cerr<<"error: new RCS_CMD_CHANNEL failed!"; return;}
+    if(!c){ cerr<<"error: new RCS_CMD_CHANNEL failed!"; return;}
 
     RCS_STAT_CHANNEL* s = new RCS_STAT_CHANNEL(emcFormat, "emcStatus", "xemc", file);
-    if(!s){std::cerr<<"error: new RCS_STAT_CHANNEL failed!"; return;}
+    if(!s){cerr<<"error: new RCS_STAT_CHANNEL failed!"; return;}
 
     this->c = c;
     this->s = s;
@@ -360,7 +360,7 @@ int LinuxcncCommand::emcSendCommand(RCS_CMD_MSG& cmd)
 bool LinuxcncCommand::mdi(char* cmd, int len)
 {
     EMC_TASK_PLAN_EXECUTE m;
-    if(unsigned(len) > sizeof(m.command) - 1) {std::cerr<<"error: MDI commands limited to" <<sizeof(m.command) - 1<<" characters!"; return false;}
+    if(unsigned(len) > sizeof(m.command) - 1) {cerr<<"error: MDI commands limited to" <<sizeof(m.command) - 1<<" characters!"; return false;}
 
     rtapi_strxcpy(m.command, cmd);
     emcSendCommand(m);
@@ -377,7 +377,7 @@ bool LinuxcncCommand::mode(EMC_TASK_MODE_ENUM mode)
             case EMC_TASK_MODE_AUTO:
                 break;
             default:
-                std::cerr<< "error: Mode should be MODE_MDI, MODE_MANUAL, or MODE_AUTO";
+                cerr<< "error: Mode should be MODE_MDI, MODE_MANUAL, or MODE_AUTO";
                 return false;
     }
     emcSendCommand(m);
@@ -430,7 +430,7 @@ bool LinuxcncCommand::state(EMC_TASK_STATE_ENUM state)
         case EMC_TASK_STATE_OFF:
             break;
         default:
-            std::cerr<< "error: Machine state should be STATE_ESTOP, STATE_ESTOP_RESET, STATE_ON, or STATE_OFF ";
+            cerr<< "error: Machine state should be STATE_ESTOP, STATE_ESTOP_RESET, STATE_ON, or STATE_OFF ";
             return false;
     }
     emcSendCommand(m);
@@ -507,7 +507,7 @@ bool LinuxcncCommand::spindle(int dir, double arg1, double arg2)
     }
         break;
     default:
-        std::cerr<<"error: Spindle direction should be SPINDLE_FORWARD, SPINDLE_REVERSE, SPINDLE_OFF, SPINDLE_INCREASE, SPINDLE_DECREASE, or SPINDLE_CONSTANT";
+        cerr<<"error: Spindle direction should be SPINDLE_FORWARD, SPINDLE_REVERSE, SPINDLE_OFF, SPINDLE_INCREASE, SPINDLE_DECREASE, or SPINDLE_CONSTANT";
         return false;
     }
     return true;
@@ -543,7 +543,7 @@ bool LinuxcncCommand::mist(int dir)
     }
         break;
     default:
-        std::cerr<<"error: Mist should be MIST_ON or MIST_OFF";
+        cerr<<"error: Mist should be MIST_ON or MIST_OFF";
         return false;
     }
     return true;
@@ -565,7 +565,7 @@ bool LinuxcncCommand::flood(int dir)
     }
         break;
     default:
-        std::cerr<<"error: FLOOD should be FLOOD_ON or FLOOD_OFF";
+        cerr<<"error: FLOOD should be FLOOD_ON or FLOOD_OFF";
         return false;
     }
     return true;
@@ -589,7 +589,7 @@ bool LinuxcncCommand::brake(int dir, int spindle)
     }
         break;
     default:
-        std::cerr<<"error: BRAKE should be BRAKE_ENGAGE or BRAKE_RELEASE";
+        cerr<<"error: BRAKE should be BRAKE_ENGAGE or BRAKE_RELEASE";
         return false;
     }
     return true;
@@ -642,7 +642,7 @@ bool LinuxcncCommand::jog(int fn, int ja_value, int jjogmode, double vel, double
         incr.jjogmode = jjogmode;
         emcSendCommand(incr);
     }else{
-        std::cerr<<"error: jog() first argument must be JOG_xxx";
+        cerr<<"error: jog() first argument must be JOG_xxx";
         return false;
     }
     return true;
@@ -661,7 +661,7 @@ bool LinuxcncCommand::program_open(char* file, int len)
 
     EMC_TASK_PLAN_OPEN m;
     if(unsigned(len) > sizeof(m.file) - 1){
-        std::cerr << "error: File name limited to "<< sizeof(m.file) - 1 <<" characters";
+        cerr << "error: File name limited to "<< sizeof(m.file) - 1 <<" characters";
         return false;
     }
     rtapi_strxcpy(m.file, file);
@@ -710,7 +710,7 @@ bool LinuxcncCommand::emcauto(int fn, int line)
     }
         break;
     default:
-        std::cerr <<"error: Unexpected argument "<<fn<<" to command.auto";
+        cerr <<"error: Unexpected argument "<<fn<<" to command.auto";
         return false;
     }
     return true;
@@ -809,14 +809,14 @@ LinuxcncError::LinuxcncError()
     char *file = get_nmlfile();
 
     NML* c = new NML(emcFormat, "emcError", "xemc", file);
-    if(!c){std::cerr<<"error: new NML failed!"; return;}
+    if(!c){cerr<<"error: new NML failed!"; return;}
 
     this->c = c;
 }
 
 char* LinuxcncError::Error_poll()
 {
-    if(this->c->valid()){std::cerr<<"error: Error buffer invalid!"; return NULL;}
+    if(this->c->valid()){cerr<<"error: Error buffer invalid!"; return NULL;}
     NMLTYPE type = this->c->read();
     if(type == 0) return nullptr;
 

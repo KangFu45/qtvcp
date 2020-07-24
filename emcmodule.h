@@ -20,6 +20,12 @@
 
 #include <cmath>
 #include <vector>
+#include <string>
+#include <map>
+
+using namespace std;
+
+typedef vector<string> strings;//TODO: isn't here
 
 #ifndef T_BOOL
 // The C++ standard probably doesn't specify the amount of storage for a 'bool',
@@ -67,8 +73,8 @@ public:
     LinuxcncIni(const char* inifile);
     ~LinuxcncIni() { delete i; }
 
-    const char* Ini_find(const char *tag, const char *section);
-    std::vector<const char*> Ini_findall(const char *tag, const char *section);
+    string Ini_find(const char *tag, const char *section, string def = "");
+    strings Ini_findall(const char *tag, const char *section);
 
     IniFile* i =  nullptr;
 };
