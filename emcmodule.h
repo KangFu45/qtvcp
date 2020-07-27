@@ -22,6 +22,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <memory>
 
 using namespace std;
 
@@ -102,8 +103,8 @@ public:
     int read_line() {return this->status.task.readLine; }
     int motion_line() {return this->status.task.motionLine; }
     int current_line() {return this->status.task.currentLine; }
-    char* file() {return this->status.task.file; }
-    char* command() {return this->status.task.command; }
+    string file() {return this->status.task.file; }
+    string command() {return this->status.task.command; }
     int program_units() {return this->status.task.programUnits; }
     int interpreter_errcode() {return this->status.task.interpreter_errcode; }
     bool optional_stop() {return this->status.task.optional_stop_state; }
@@ -181,16 +182,16 @@ public:
         double output;
         double input;
         double velocity;
-        unsigned char inpos;
-        unsigned char homing;
-        unsigned char homed;
-        unsigned char fault;
-        unsigned char enabled;
-        unsigned char min_soft_limit;
-        unsigned char max_soft_limit;
-        unsigned char min_hard_limit;
-        unsigned char max_hard_limit;
-        unsigned char override_limits;
+        bool inpos;
+        bool homing;
+        bool homed;
+        bool fault;
+        bool enabled;
+        bool min_soft_limit;
+        bool max_soft_limit;
+        bool min_hard_limit;
+        bool max_hard_limit;
+        bool override_limits;
     };
 
     struct AxisData {
@@ -270,7 +271,7 @@ public:
     void teleop_enable(int enable);
     void traj_mode(EMC_TRAJ_MODE_ENUM mode);
     bool state(EMC_TASK_STATE_ENUM state);
-    bool mdi(char* cmd, int len);
+    bool mdi(string cmd);
     bool mode(EMC_TASK_MODE_ENUM mode);
     void feedrate(double scale);
     void rapidrate(double scale);

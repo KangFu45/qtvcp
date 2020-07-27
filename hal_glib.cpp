@@ -5,14 +5,18 @@
 #include <QTimer>
 #include <QDebug>
 
-_GStat::_GStat (LinuxcncStat* stat)
+_GStat::_GStat (shared_ptr<LinuxcncStat> stat)
 {
-    if(stat == nullptr)
-        this->stat = new LinuxcncStat();
+    if(stat == nullptr){
+        // The method is right?
+        shared_ptr<LinuxcncStat> tmp(new LinuxcncStat);
+        this->stat = tmp;
+    }
     else
         this->stat = stat;
 
-    this->cmd = new LinuxcncCommand();
+    shared_ptr<LinuxcncCommand> tmp(new LinuxcncCommand);
+    this->cmd = tmp;
     this->fresh.tool_prep_number = 0;
 
     this->stat->poll();
@@ -112,7 +116,7 @@ void _GStat::merge()
     this->fresh.current_z_rotation = this->stat->rotation_xy();
     this->fresh.current_tool_offset = this->stat->tool_offset();//manual delete
     //overrirde limits / hard limits
-    LinuxcncStat::JointData* jointdata = this->stat->joint();
+    LinuxcncStat::JointData* jointdata = this->stat->joint();//manual delete
     int num = this->stat->joints();
     unsigned char* or_limit_list = new unsigned char[num];//manual delete
     bool or_limit_set = false;
@@ -180,6 +184,12 @@ void _GStat::merge()
     delete [] gcodedata;
     delete [] mcodedata;
     delete [] table;
+    delete [] jointdata;
+
+    this->fresh.act_positions = nullptr;
+    this->fresh.relp = nullptr;
+    this->fresh.dtg = nullptr;
+    this->fresh.joint_act_positions = nullptr;
 }
 
 void _GStat::update()
@@ -245,7 +255,7 @@ void _GStat::update()
         //do avoid that a signal is emited in that case, causing
         //a reload of the preview and sourceview widgets
         if(this->stat->interp_state() == EMC_TASK_INTERP_IDLE)
-            emit this->file_loaded(this->fresh.file);
+            emit this->file_loaded(this->fresh.file.c_str());
     }
     //ToDo : Find a way to avoid signal when the line changed due to
     //       a remap procedure, because the signal do highlight a wrong
@@ -303,19 +313,20 @@ void _GStat::update()
     emit this->current_feed_rate(this->stat->current_vel()*60.0);
 
     //all manual delete
-    double* act_positions = this->stat->actual_position();
+    this->fresh.act_positions = this->stat->actual_position();
     //double* positions = this->stat->position();
     double* g5x_offsets = this->stat->g5x_offset();
     double* tool_offsets = this->stat->tool_offset();
     double* g92_offsets = this->stat->g92_offset();
-    double* joint_act_positions = this->stat->joint_actual_position();
-    double* dtg = this->stat->dtg();
+    this->fresh.joint_act_positions = this->stat->joint_actual_position();
+    this->fresh.dtg = this->stat->dtg();
     //x relative position
-    emit this->current_x_rel_position(act_positions[0]-g5x_offsets[0]-tool_offsets[0]-g92_offsets[0]);
+    emit this->current_x_rel_position(this->fresh.act_positions[0]-g5x_offsets[0]-tool_offsets[0]-g92_offsets[0]);
 
     //calculate position offsets (native units)
-    double* relp = this->get_rel_position(act_positions, g5x_offsets, tool_offsets, g92_offsets);
-    emit this->current_position(act_positions, relp, dtg, joint_act_positions);//manual delete ptr in slot function
+    this->fresh.relp = this->get_rel_position(this->fresh.act_positions, g5x_offsets, tool_offsets, g92_offsets);
+    emit this->current_position(this->fresh.act_positions, this->fresh.relp,
+                                this->fresh.dtg, this->fresh.joint_act_positions);//manual delete ptr in slot function
 
     //spindle control
     if((this->fresh.spindle_enabled != rot.spindle_enabled)
@@ -398,6 +409,16 @@ void _GStat::update()
     delete [] tool_offsets;
     delete [] g92_offsets;
 
+    //delete old ptr
+    delete [] rot.current_tool_offset;
+    delete [] rot.override_limits;
+    delete [] rot.hard_limit_list;
+
+    if(rot.act_positions != nullptr) delete rot.act_positions;
+    if(rot.relp != nullptr) delete rot.relp;
+    if(rot.dtg != nullptr) delete rot.dtg;
+    if(rot.joint_act_positions != nullptr) delete rot.joint_act_positions;
+
     // AND DONE...
     emit this->periodic();
 }
@@ -447,4 +468,221 @@ double* _GStat::get_rel_position(double* act_position, double* g5x_offset
     relp[7] = v - g92_offset[7];
     relp[8] = w - g92_offset[8];
     return relp;
+}
+
+void _GStat::check_for_modes()
+{
+    this->stat->poll();
+    EMC_TASK_MODE_ENUM premode = this->stat->task_mode();
+}
+
+void _GStat::set_jograte(unsigned int upm)
+{
+    this->current_jog_rate = upm;
+    emit this->jograte_changed(upm);
+}
+
+void _GStat::set_jograte_angular(unsigned int rate)
+{
+    this->current_angular_jog_rate = rate;
+    emit this->jograte_angular_changed(rate);
+}
+
+void _GStat::set_jog_increment_angular(unsigned int distance, string text)
+{
+    this->current_jog_distance_angular = distance;
+    this->current_jog_distance_angular_text = text;
+    emit this->jogincrement_angular_changed(distance, text);
+}
+
+void _GStat::set_jog_increments(unsigned int distance, string text)
+{
+    this->current_jog_distance  = distance;
+    this->current_jog_distance_text = text;
+    emit this->jogincrement_changed(distance, text);
+}
+
+void _GStat::set_selected_joint(short data)
+{
+    this->selected_joint = data;
+    emit this->joint_selection_changed(data);
+}
+
+void _GStat::set_selected_axis(char data)
+{
+    this->selected_axis = data;
+    emit this->axis_selection_changed(data);
+}
+
+bool _GStat::is_homing()
+{
+    LinuxcncStat::JointData* data = this->stat->joint();
+    int num = this->stat->joints();
+    for(int i=0; i<num; ++i){
+        if(data[i].homing)
+            return true;
+    }
+    delete [] data;
+    return false;
+}
+
+bool _GStat::is_man_mode()
+{
+    this->stat->poll();
+    return this->stat->task_mode() == EMC_TASK_MODE_MANUAL;
+}
+
+bool _GStat::is_mdi_mode()
+{
+    this->stat->poll();
+    return this->stat->task_mode() == EMC_TASK_MODE_MDI;
+}
+
+bool _GStat::is_auto_mode()
+{
+    this->stat->poll();
+    return this->stat->task_mode() == EMC_TASK_MODE_AUTO;
+}
+bool _GStat::is_on_and_idle()
+{
+    this->stat->poll();
+    return this->stat->task_state() > EMC_TASK_STATE_OFF
+            && this->stat->interp_state() == EMC_TASK_INTERP_IDLE;
+}
+
+bool _GStat::is_auto_running()
+{
+    this->stat->poll();
+    return this->stat->task_mode() == EMC_TASK_MODE_AUTO
+            && this->stat->interp_state() != EMC_TASK_INTERP_IDLE;
+}
+
+bool _GStat::is_interp_running()
+{
+    this->stat->poll();
+    return this->stat->interp_state() != EMC_TASK_INTERP_IDLE;
+}
+
+bool _GStat::is_interp_paused()
+{
+    this->stat->poll();
+    return this->stat->interp_state() == EMC_TASK_INTERP_PAUSED;
+}
+
+bool _GStat::is_interp_reading()
+{
+    this->stat->poll();
+    return this->stat->interp_state() == EMC_TASK_INTERP_READING;
+}
+
+bool _GStat::is_interp_waiting()
+{
+    this->stat->poll();
+    return this->stat->interp_state() == EMC_TASK_INTERP_WAITING;
+}
+
+bool _GStat::is_interp_idle()
+{
+    this->stat->poll();
+    return this->stat->interp_state() == EMC_TASK_INTERP_IDLE;
+}
+
+bool _GStat::is_file_loaded()
+{
+    this->stat->poll();
+    if(this->stat->file().empty())
+        return false;
+    else
+        return true;
+}
+
+bool _GStat::is_spindle_on()
+{
+    //TODO:
+    return false;
+}
+
+int _GStat::get_spindle_speed()
+{
+    return 0;
+}
+
+bool _GStat::is_joint_mode()
+{
+    this->stat->poll();
+    return this->stat->motion_mode() == EMC_TRAJ_MODE_FREE;
+}
+
+int _GStat::get_current_tool()
+{
+    this->stat->poll();
+    return this->stat->tool_in_spindle();
+}
+
+void _GStat::set_tool_touchoff(int tool, char axis, int value)
+{
+    EMC_TASK_MODE_ENUM premode;
+    string m("G10 L10 P");
+    m += to_string(tool);
+    m += " ";
+    m += axis;
+    m += to_string(value);
+
+    this->stat->poll();
+    if(this->stat->task_mode() != EMC_TASK_MODE_MDI){
+        premode = this->stat->task_mode();
+        this->cmd->mode(EMC_TASK_MODE_MDI);
+        this->cmd->wait_complete();
+    }
+    this->cmd->mdi(m);
+    this->cmd->wait_complete();
+    this->cmd->mdi("g43");
+    this->cmd->wait_complete();
+    if(premode)
+        this->cmd->mode(premode);
+}
+
+void _GStat::set_axis_origin(char axis, int value)
+{
+    EMC_TASK_MODE_ENUM premode;
+    string m("G10 L20 P0 ");
+    m += axis;
+    m += to_string(value);
+
+    this->stat->poll();
+    if(this->stat->task_mode() != EMC_TASK_MODE_MDI){
+        premode = this->stat->task_mode();
+        this->cmd->mode(EMC_TASK_MODE_MDI);
+        this->cmd->wait_complete();
+    }
+    this->cmd->mdi(m);
+    this->cmd->wait_complete();
+    if(premode)
+        this->cmd->mode(premode);
+    emit this->reload_display();
+}
+
+void _GStat::do_jog(int axisnum, int direction, double distance)
+{
+
+}
+
+EMC_TASK_MODE_ENUM _GStat::get_jjogmode()
+{
+    return this->stat->task_mode();
+}
+
+int _GStat::jnum_for_axisnum(int axisnum)
+{
+    return 0;
+}
+
+void _GStat::get_jog_info(int axisnum)
+{
+
+}
+
+double* _GStat::get_probed_position_with_offsets()
+{
+    return nullptr;
 }

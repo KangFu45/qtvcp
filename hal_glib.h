@@ -17,17 +17,17 @@ class _GStat : public QObject
     Q_OBJECT //Emits signals in GObject for python
 
 public:
-    _GStat (LinuxcncStat* stat = nullptr);
+    _GStat (shared_ptr<LinuxcncStat> stat = nullptr);
 
-    LinuxcncStat* stat;
-    LinuxcncCommand* cmd;
+    shared_ptr<LinuxcncStat> stat;
+    shared_ptr<LinuxcncCommand> cmd;
 
     unsigned int current_jog_rate = 15;
     unsigned int current_angular_jog_rate = 360;
     unsigned int current_jog_distance = 0;
-    char* current_jog_distance_text ;
+    string current_jog_distance_text ;
     unsigned int current_jog_distance_angular = 0;
-    char* current_jog_distance_angular_text ;
+    string current_jog_distance_angular_text ;
     short selected_joint = -1;
     char selected_axis ;
 
@@ -38,7 +38,7 @@ public:
         EMC_TASK_STATE_ENUM state;
         EMC_TASK_MODE_ENUM mode;
         EMC_TASK_INTERP_ENUM interp;
-        char* file;
+        string file;
         bool paused;
         int line;
         bool homed;
@@ -76,7 +76,59 @@ public:
         string g_code;
         string m_code;
         CANON_TOOL_TABLE tool_info;
+
+        double* act_positions;
+        double* relp;
+        double* dtg;
+        double* joint_act_positions;
     }fresh;
+
+    void check_for_modes();
+    EMC_TASK_MODE_ENUM get_current_mode() {return this->fresh.mode;}
+    void set_jograte(unsigned int upm);
+    double get_jograte() {return this->current_jog_rate; }
+    void set_jograte_angular(unsigned int rate);
+    double get_jograte_angular() {return this->current_angular_jog_rate; }
+    double get_jog_increment_angular() {return this->current_jog_distance_angular; }
+    void set_jog_increment_angular(unsigned int distance, string text);
+    void set_jog_increments(unsigned int distance, string text);
+    double get_jog_increment() {return this->current_jog_distance; }
+    void set_selected_joint(short data);
+    int get_selected_joint() {return this->selected_joint; }
+    void set_selected_axis(char data);
+    char get_selected_axis() {return this->selected_axis; }
+    bool is_all_homed_() {return this->is_all_homed; }
+    bool is_homing();
+    bool machine_is_on() {return this->fresh.state > EMC_TASK_STATE_OFF;}
+    bool estop_is_clear() {return this->fresh.state > EMC_TASK_STATE_ESTOP; }
+    bool is_man_mode();
+    bool is_mdi_mode();
+    bool is_auto_mode();
+    bool is_on_and_idle();
+    bool is_auto_running();
+    bool is_auto_paused() {return this->fresh.paused; }
+    bool is_interp_running();
+    bool is_interp_paused();
+    bool is_interp_reading();
+    bool is_interp_waiting();
+    bool is_interp_idle();
+    bool is_file_loaded();
+    bool is_metric_mode() {return this->fresh.metric; }
+    bool is_spindle_on();
+    int get_spindle_speed();
+    bool is_joint_mode();
+    bool is_status_valid() {return this->status_active; }
+    bool is_limits_override_set() {return this->fresh.override_limits_set; }
+    bool is_hard_limits_tripped() {return this->fresh.hard_limits_tripped; }
+    int get_current_tool();
+    void set_tool_touchoff(int tool, char axis, int value);
+    void set_axis_origin(char axis, int value);
+    void do_jog(int axisnum, int direction, double distance = 0);
+    EMC_TASK_MODE_ENUM get_jjogmode();
+    int jnum_for_axisnum(int axisnum);
+    void get_jog_info(int axisnum);
+    double* get_probed_position_with_offsets();
+    void shutdown_() {emit this->shutdown();}
 
 private:
     bool status_active = false;
@@ -118,19 +170,19 @@ signals:
     void interp_reading();
     void interp_waiting();
 
-    void jograte_changed();
-    void jograte_angular_changed();
-    void jogincrement_changed();
-    void jogincrement_angular_changed();
+    void jograte_changed(unsigned int);
+    void jograte_angular_changed(unsigned int);
+    void jogincrement_changed(unsigned int, string);
+    void jogincrement_angular_changed(unsigned int, string);
 
-    void joint_selection_changed();
-    void axis_selection_changed();
+    void joint_selection_changed(short);
+    void axis_selection_changed(char);
 
     void program_pause_changed(bool);
     void optional_stop_changed(bool);
     void block_delete_changed(bool);
 
-    void file_loaded(char*);
+    void file_loaded(const char*);
     void reload_display();
     void line_changed(int);
 

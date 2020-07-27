@@ -135,16 +135,16 @@ LinuxcncStat::JointData LinuxcncStat::Stat_joint_one(int jointno){
     data.output = this->status.motion.joint[jointno].output;
     data.input = this->status.motion.joint[jointno].input;
     data.velocity = this->status.motion.joint[jointno].velocity;
-    data.inpos = this->status.motion.joint[jointno].input;
-    data.homing = this->status.motion.joint[jointno].homing;
-    data.homed = this->status.motion.joint[jointno].homed;
-    data.fault = this->status.motion.joint[jointno].fault;
-    data.enabled = this->status.motion.joint[jointno].enabled;
-    data.min_soft_limit = this->status.motion.joint[jointno].minSoftLimit;
-    data.max_soft_limit = this->status.motion.joint[jointno].maxSoftLimit;
-    data.min_hard_limit = this->status.motion.joint[jointno].minHardLimit;
-    data.max_hard_limit = this->status.motion.joint[jointno].maxHardLimit;
-    data.override_limits = this->status.motion.joint[jointno].overrideLimits;
+    data.inpos = this->status.motion.joint[jointno].inpos != 0;
+    data.homing = this->status.motion.joint[jointno].homing != 0;
+    data.homed = this->status.motion.joint[jointno].homed != 0;
+    data.fault = this->status.motion.joint[jointno].fault != 0;
+    data.enabled = this->status.motion.joint[jointno].enabled != 0;
+    data.min_soft_limit = this->status.motion.joint[jointno].minSoftLimit != 0;
+    data.max_soft_limit = this->status.motion.joint[jointno].maxSoftLimit != 0;
+    data.min_hard_limit = this->status.motion.joint[jointno].minHardLimit != 0;
+    data.max_hard_limit = this->status.motion.joint[jointno].maxHardLimit != 0;
+    data.override_limits = this->status.motion.joint[jointno].overrideLimits != 0;
     return data;
 }
 
@@ -357,12 +357,12 @@ int LinuxcncCommand::emcSendCommand(RCS_CMD_MSG& cmd)
         return -1;
 }
 
-bool LinuxcncCommand::mdi(char* cmd, int len)
+bool LinuxcncCommand::mdi(string cmd)
 {
     EMC_TASK_PLAN_EXECUTE m;
-    if(unsigned(len) > sizeof(m.command) - 1) {cerr<<"error: MDI commands limited to" <<sizeof(m.command) - 1<<" characters!"; return false;}
+    //if(unsigned(len) > sizeof(m.command) - 1) {cerr<<"error: MDI commands limited to" <<sizeof(m.command) - 1<<" characters!"; return false;}
 
-    rtapi_strxcpy(m.command, cmd);
+    rtapi_strxcpy(m.command, cmd.c_str());
     emcSendCommand(m);
     return true;
 }

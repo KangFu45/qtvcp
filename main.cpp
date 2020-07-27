@@ -3,38 +3,44 @@
 
 #include <iostream>
 
-#include "emcmodule.h"
+#include "slot_test.h"
 
 int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-    if(argc<2) {std::cerr << "Usage: " << argv[0] << " NMLFILE\n"; abort();}
+    if(argc<2) {cerr << "Usage: " << argv[0] << " NMLFILE\n"; abort();}
     const char* inifile = argv[1];
 
     qDebug() << inifile << "\n";
 
     LinuxcncIni ini(inifile);
 
-    qDebug() << ini.Ini_find("DISPLAY","INCREMENTS") <<"\n";
+    //qDebug() << ini.Ini_find("DISPLAY","INCREMENTS") <<"\n";
+
+    slot_test* slot = new slot_test();
 
     //LinuxcncStat stat1;
     //
-    //double* pos;
+    //double* data;
+    //int num;
+    //LinuxcncStat::JointData* data1;
     //while(1){
-    //    usleep(100*1000);
+    //    usleep(500*1000);
     //    stat1.poll();
-    //    pos = stat1.actual_position();
-    //    qDebug() << pos[0] <<" "<< pos[1] <<" "<< pos[2] <<"\n";
+    //    num = stat1.joints();
+    //    data1 = stat1.joint();
+    //    for(int i =0; i<num; ++i)
+    //        qDebug()<<data1[i].homed<<" "<<data1[i].input<<" "<<data1[i].max_position_limit<<" "<<data1[i].velocity;
     //}
 
-    LinuxcncCommand command1;
-    char* cmd = "g1 x5 f100";
-    //std::cin >> cmd;
+    //LinuxcncCommand command1;
+    //char* cmd = "g1 x5 f100";
+    //cin >> cmd;
     //qDebug()<<cmd <<"\n";
     //command1.home(cmd);
-    command1.mode(EMC_TASK_MODE_MDI);
-    command1.mdi(cmd,20);
+    //command1.mode(EMC_TASK_MODE_MDI);
+    //command1.mdi(cmd,20);
 
     return a.exec();
 }
