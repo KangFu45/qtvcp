@@ -83,7 +83,7 @@ public:
         double* joint_act_positions;
     }fresh;
 
-    void check_for_modes();
+    void  check_for_modes(int& state, EMC_TASK_MODE_ENUM mode,EMC_TASK_MODE_ENUM& premode);
     EMC_TASK_MODE_ENUM get_current_mode() {return this->fresh.mode;}
     void set_jograte(unsigned int upm);
     double get_jograte() {return this->current_jog_rate; }
@@ -243,7 +243,7 @@ signals:
     void dro_reference_change_request();
     void show_preference();
     void shutdown();
-    void error();
+    void error(string);
     void general();
     void forced_update_sig();
 };

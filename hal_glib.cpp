@@ -470,10 +470,27 @@ double* _GStat::get_rel_position(double* act_position, double* g5x_offset
     return relp;
 }
 
-void _GStat::check_for_modes()
+//check for requied modes
+//fail if mode is 0
+//fail if machine is busy
+//true if all ready in mode
+//None if possible to change
+// state == 1 and true ,state == 0 and none ,state == -1 and false
+void _GStat::check_for_modes(int& state, EMC_TASK_MODE_ENUM mode, EMC_TASK_MODE_ENUM& premode)
 {
     this->stat->poll();
-    EMC_TASK_MODE_ENUM premode = this->stat->task_mode();
+    premode = this->stat->task_mode();
+
+    if(this->stat->task_mode() == mode) {
+        state = 1;
+        return;
+    }
+    if(this->stat->task_mode() == EMC_TASK_MODE_AUTO
+            && this->stat->interp_state() != EMC_TASK_INTERP_IDLE){
+        state = 0;
+        return;
+    }
+    state = -1;
 }
 
 void _GStat::set_jograte(unsigned int upm)

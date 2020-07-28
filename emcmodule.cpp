@@ -405,10 +405,10 @@ void LinuxcncCommand::debug(int level)
     emcSendCommand(d);
 }
 
-void LinuxcncCommand::teleop_enable(int enable)
+void LinuxcncCommand::teleop_enable(bool enable)
 {
     EMC_TRAJ_SET_TELEOP_ENABLE en;
-    en.enable = enable;
+    en.enable = int(enable);
     emcSendCommand(en);
 }
 
@@ -466,7 +466,7 @@ void LinuxcncCommand::spindleoverride(double scale, int spindle)
     emcSendCommand(m);
 }
 
-bool LinuxcncCommand::spindle(int dir, double arg1, double arg2)
+bool LinuxcncCommand::spindle(int dir, double arg1, int arg2)
 {
     switch (dir) {
     case LOCAL_SPINDLE_FORWARD:
@@ -474,7 +474,7 @@ bool LinuxcncCommand::spindle(int dir, double arg1, double arg2)
     {
         EMC_SPINDLE_ON m;
         m.speed = dir * arg1;
-        m.spindle = (int)arg2;
+        m.spindle = arg2;
         emcSendCommand(m);
     }
         break;
@@ -621,7 +621,7 @@ void LinuxcncCommand::override_limits()
     emcSendCommand(m);
 }
 
-bool LinuxcncCommand::jog(int fn, int ja_value, int jjogmode, double vel, double inc)
+bool LinuxcncCommand::jog(int fn, int jjogmode, int ja_value, double vel, double inc)
 {
     if(fn == LOCAL_JOG_STOP){
         EMC_JOG_STOP abort;
@@ -716,7 +716,7 @@ bool LinuxcncCommand::emcauto(int fn, int line)
     return true;
 }
 
-void LinuxcncCommand::set_optional_stop(int state)
+void LinuxcncCommand::set_optional_stop(bool state)
 {
     EMC_TASK_PLAN_SET_OPTIONAL_STOP m;
     m.state = state;
@@ -793,10 +793,8 @@ void LinuxcncCommand::set_analog_output(bool index, double start)
     emcSendCommand(m);
 }
 
-int LinuxcncCommand::wait_complete()
+int LinuxcncCommand::wait_complete(int timeout)
 {
-    double timeout = EMC_COMMAND_TIMEOUT;
-    //TODO:
     return emcWaitCommandComplete(timeout);
 }
 
@@ -814,14 +812,14 @@ LinuxcncError::LinuxcncError()
     this->c = c;
 }
 
-char* LinuxcncError::Error_poll()
+string LinuxcncError::Error_poll()
 {
     if(this->c->valid()){cerr<<"error: Error buffer invalid!"; return NULL;}
     NMLTYPE type = this->c->read();
-    if(type == 0) return nullptr;
+    if(type == 0) return "";
 
     //don't return error type now
-    char* r;
+    string r = to_string(type);
 #define PASTE(a,b) a ## b
 #define _TYPECASE(tag, type, f) \
     case tag: { \

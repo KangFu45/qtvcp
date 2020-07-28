@@ -1,8 +1,6 @@
 #ifndef EMCMODULE_H
 #define EMCMODULE_H
 
-#endif // EMCMODULE_H
-
 #define ULAPI
 
 #include <inttypes.h>
@@ -268,7 +266,7 @@ private:
 public:
     //Command_methods in emcmodule for python
     void debug(int level);
-    void teleop_enable(int enable);
+    void teleop_enable(bool enable);
     void traj_mode(EMC_TRAJ_MODE_ENUM mode);
     bool state(EMC_TASK_STATE_ENUM state);
     bool mdi(string cmd);
@@ -277,7 +275,7 @@ public:
     void rapidrate(double scale);
     void maxvel(double vel);
     void spindleoverride(double scale, int spindle);
-    bool spindle(int dir, double arg1, double arg2);
+    bool spindle(int dir, double arg1, int arg2);
     void tool_offset(int toolno, double tranz, double tranx, double diameter,
                      double frontangle, double backangle, int orientation);
     bool mist(int dir);
@@ -289,11 +287,11 @@ public:
     void override_limits();
     void home(int joint);
     void unhome(int joint);
-    bool jog(int fn, int ja_value, int jjogmode, double vel=0, double inc=0);
+    bool jog(int fn, int jjogmode, int ja_value, double vel=0, double inc=0);
     void reset_interpreter();
     bool program_open(char* file, int len);
     bool emcauto(int fn, int line = -1);
-    void set_optional_stop(int state);
+    void set_optional_stop(bool state);
     void set_block_delete(int state);
     void set_min_limit(int joint, double limit);
     void set_max_limit(int joint, double limit);
@@ -304,7 +302,7 @@ public:
     void set_digital_output(bool index, bool start);
     void set_analog_output(bool index, double start);
 
-    int wait_complete();
+    int wait_complete(int timeout = 0);
 };
 
 class LinuxcncError
@@ -313,8 +311,10 @@ public:
     LinuxcncError();
     ~LinuxcncError() { delete c;}
 
-    char* Error_poll();
+    string Error_poll();
 
 private:
     NML* c = nullptr;
 };
+
+#endif // EMCMODULE_H

@@ -63,6 +63,13 @@ public:
     string TOOL_FILE_PATH;
     string POSTGUI_HALFILE_PATH;
 
+    //double convert_machine_to_metric(double data);
+    //double convert_machine_to_imperial(double data);
+    //double convert_metric_to_machine(double data);
+    //double convert_imperial_to_machine(double data);
+    double convert_units(double data) {return data*this->MACHINE_UNIT_CONVERSION;}
+
+
 private:
     string get_error_safe_setting(const char* heading, const char* detail, string def = "");
 
