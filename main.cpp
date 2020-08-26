@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "slot_test.h"
+#include "qt_istat.h"
 
 int main(int argc, char *argv[])
 {
@@ -14,9 +15,7 @@ int main(int argc, char *argv[])
 
     qDebug() << inifile << "\n";
 
-    LinuxcncIni ini(inifile);
-
-    //qDebug() << ini.Ini_find("DISPLAY","INCREMENTS") <<"\n";
+    _IStat* stat = new _IStat(inifile);
 
     slot_test* slot = new slot_test();
 

@@ -15,21 +15,21 @@ LinuxcncIni::LinuxcncIni(const char* inifile)
 string LinuxcncIni::Ini_find(const char *tag, const char *section, string def)
 {
     int num = 1;
-    string out = this->i->Find(section,tag,num);
-    if(out.empty()) return def;
+    const char* out = this->i->Find(section,tag,num);
+    if(out == NULL) return def;
     return string(out);
 }
 
 strings LinuxcncIni::Ini_findall(const char *tag, const char *section)
 {
-    string out;
+    const char* out;
     int num = 1;
 
     strings result;
     while (1) {
         out = this->i->Find(section,tag,num);
-        if(out.empty()) break;
-        result.emplace_back(out);
+        if(out == NULL) break;
+        result.emplace_back(string(out));
         ++num;
     }
     return result;

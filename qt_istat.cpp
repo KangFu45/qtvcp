@@ -16,7 +16,7 @@ _IStat::_IStat(const char *inipath)
 
 void _IStat::update()
 {
-    this->MDI_HISTORY_PATH = this->inifile->Ini_find("DISPLAY", "MDI_HISTORY_FILE", "~/.axis_mdi_history");
+    this->MDI_HISTORY_PATH = this->inifile->Ini_find("DISPLA", "MDI_HISTORY_FILE", "~/.axis_mdi_history");
     this->QTVCP_LOG_HISTORY_PATH = this->inifile->Ini_find("DISPLAY", "LOG_FILE", "~/qtvcp.log");
     this->MACHINE_LOG_HISTORY_PATH = this->inifile->Ini_find("DISPLAY", "MACHINE_LOG_PATH", "~/.machine_log_history");
     this->PREFERENCE_PATH = this->inifile->Ini_find("DISPLAY", "PREFERENCE_FILE_PATH");
