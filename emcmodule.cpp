@@ -270,6 +270,14 @@ double* LinuxcncStat::joint_actual_position()
     return res;
 }
 
+double* LinuxcncStat::joint_actual_velocity()
+{
+    double* res = new double[EMCMOT_MAX_JOINTS];
+    for(int i=0; i<EMCMOT_MAX_JOINTS; ++i)
+        res[i] = this->status.motion.joint[i].velocity*60;
+    return res;
+}
+
 double* LinuxcncStat::probed_position(){
     return pose(this->status.motion.traj.probedPosition);
 }
@@ -654,7 +662,7 @@ void LinuxcncCommand::reset_interpreter()
     emcSendCommand(m);
 }
 
-bool LinuxcncCommand::program_open(char* file, int len)
+bool LinuxcncCommand::program_open(const char* file, int len)
 {
     EMC_TASK_PLAN_CLOSE m0;
     emcSendCommand(m0);
@@ -687,7 +695,7 @@ bool LinuxcncCommand::emcauto(int fn, int line)
         break;
     case LOCAL_AUTO_RESUME:
     {
-        EMC_TASK_PLAN_REVERSE resume;
+        EMC_TASK_PLAN_RESUME resume;
         emcSendCommand(resume);
     }
         break;
@@ -814,7 +822,7 @@ LinuxcncError::LinuxcncError()
 
 string LinuxcncError::Error_poll()
 {
-    if(this->c->valid()){cerr<<"error: Error buffer invalid!"; return NULL;}
+    if(!this->c->valid()){cerr<<"error: Error buffer invalid!"; return NULL;}
     NMLTYPE type = this->c->read();
     if(type == 0) return "";
 

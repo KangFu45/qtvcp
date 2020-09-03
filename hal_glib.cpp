@@ -26,7 +26,7 @@ _GStat::_GStat (shared_ptr<LinuxcncStat> stat)
 
     QTimer* timer = new QTimer(this);
     connect(timer,&QTimer::timeout,this,&_GStat::update);
-    timer->start(500);
+    timer->start(100);
 }
 
 void _GStat::STATES(EMC_TASK_STATE_ENUM state)
@@ -138,7 +138,7 @@ void _GStat::merge()
     strings active_gcodes;
     string codes = "";
     for(int i=0; i<ACTIVE_G_CODES; ++i){
-        if(i%10 == 0)
+        if(gcodedata[i]%10 == 0)
             active_gcodes.emplace_back(string("G"+to_string(gcodedata[i]/10)));
         else
             active_gcodes.emplace_back(string("G"+to_string(gcodedata[i]/10)+"."+to_string(gcodedata[i]%10)));
@@ -180,6 +180,24 @@ void _GStat::merge()
     CANON_TOOL_TABLE* table = this->stat->tool_table();//manual delete
     this->fresh.tool_info = table[0];
 
+    // check home
+    //TODO:
+    int homed_joints = 0;
+    bool* homeds = this->stat->homed();//manual delete
+    for(int i=0; i<this->stat->joints(); ++i){
+        if(homeds[i]){
+            ++homed_joints;
+            emit this->homed(i);
+        }
+        else
+            emit this->unhomed(i);
+    }
+    if(homed_joints == this->stat->joints())
+        this->is_all_homed = true;
+    else
+        this->is_all_homed = false;
+
+    delete [] homeds;
     delete [] spindledata;
     delete [] gcodedata;
     delete [] mcodedata;
@@ -187,6 +205,7 @@ void _GStat::merge()
     delete [] jointdata;
 
     this->fresh.act_positions = nullptr;
+    this->fresh.joint_act_velocitys = nullptr;
     this->fresh.relp = nullptr;
     this->fresh.dtg = nullptr;
     this->fresh.joint_act_positions = nullptr;
@@ -278,12 +297,19 @@ void _GStat::update()
     //if they are equal send the all-homed signal
     //else send the not-all-homed signal (with a string of unhomed joint numbers)
     //if a joint is homed send 'homed' (with a string of homed joint number)
-    if(this->fresh.homed != rot.homed){
+    bool ret = true;
+    //qDebug()<<this->stat->joints();
+    for(int i=0; i<this->stat->joints(); ++i){
+        ret = ret && this->fresh.homed[i] == rot.homed[i];
+    }
+
+    if(!ret){
         int homed_joints = 0;
         string unhomed_joints = "";
         bool* homeds = this->stat->homed();//manual delete
         for(int i=0; i<this->stat->joints(); ++i){
             if(homeds[i]){
+                //qDebug()<<"homed: "<<i;
                 ++homed_joints;
                 emit this->homed(i);
             }
@@ -293,10 +319,12 @@ void _GStat::update()
             }
         }
         if(homed_joints == this->stat->joints()){
+            //qDebug()<<"is_all_homed: true";
             this->is_all_homed = true;
             emit this->all_homed();
         }
         else{
+            //qDebug()<<"is_all_homed: false";
             this->is_all_homed = false;
             emit this->not_all_homed(unhomed_joints.c_str());
         }
@@ -310,23 +338,27 @@ void _GStat::update()
     if(this->fresh.hard_limit_list != rot.hard_limit_list)
         emit this->hard_limits_tripped(this->fresh.hard_limits_tripped, this->fresh.hard_limit_list);
     //current velocity
-    emit this->current_feed_rate(this->stat->current_vel()*60.0);
+    //emit this->current_feed_rate(this->stat->current_vel()*60.0);
 
     //all manual delete
-    this->fresh.act_positions = this->stat->actual_position();
-    //double* positions = this->stat->position();
-    double* g5x_offsets = this->stat->g5x_offset();
-    double* tool_offsets = this->stat->tool_offset();
-    double* g92_offsets = this->stat->g92_offset();
-    this->fresh.joint_act_positions = this->stat->joint_actual_position();
-    this->fresh.dtg = this->stat->dtg();
-    //x relative position
-    emit this->current_x_rel_position(this->fresh.act_positions[0]-g5x_offsets[0]-tool_offsets[0]-g92_offsets[0]);
+    //if(this->machine_is_on()){
+        this->fresh.act_positions = this->stat->actual_position();
+        //double* positions = this->stat->position();
+        double* g5x_offsets = this->stat->g5x_offset();
+        double* tool_offsets = this->stat->tool_offset();
+        double* g92_offsets = this->stat->g92_offset();
+        this->fresh.joint_act_positions = this->stat->joint_actual_position();
+        this->fresh.joint_act_velocitys = this->stat->joint_actual_velocity();
+        this->fresh.dtg = this->stat->dtg();
+        //x relative position
+        emit this->current_x_rel_position(this->fresh.act_positions[0]-g5x_offsets[0]-tool_offsets[0]-g92_offsets[0]);
 
-    //calculate position offsets (native units)
-    this->fresh.relp = this->get_rel_position(this->fresh.act_positions, g5x_offsets, tool_offsets, g92_offsets);
-    emit this->current_position(this->fresh.act_positions, this->fresh.relp,
-                                this->fresh.dtg, this->fresh.joint_act_positions);//manual delete ptr in slot function
+        //calculate position offsets (native units)
+        this->fresh.relp = this->get_rel_position(this->fresh.act_positions, g5x_offsets, tool_offsets, g92_offsets);
+        emit this->current_position_and_velocity(this->fresh.act_positions, this->fresh.relp,
+                                    this->fresh.dtg, this->fresh.joint_act_positions,
+                                    this->fresh.joint_act_velocitys);//manual delete ptr in slot function
+    //}
 
     //spindle control
     if((this->fresh.spindle_enabled != rot.spindle_enabled)
@@ -405,19 +437,21 @@ void _GStat::update()
     //if(this->fresh.tool_info != rot.tool_info)
     //    emit this->tool_info_changed();
 
-    delete [] g5x_offsets;
-    delete [] tool_offsets;
-    delete [] g92_offsets;
+    //if(this->machine_is_on()){
+        delete [] g5x_offsets;
+        delete [] tool_offsets;
+        delete [] g92_offsets;
+        if(rot.act_positions != nullptr) delete [] rot.act_positions;
+        if(rot.relp != nullptr) delete [] rot.relp;
+        if(rot.dtg != nullptr) delete [] rot.dtg;
+        if(rot.joint_act_positions != nullptr) delete [] rot.joint_act_positions;
+        if(rot.joint_act_velocitys != nullptr) delete [] rot.joint_act_velocitys;
+    //}
 
     //delete old ptr
     delete [] rot.current_tool_offset;
     delete [] rot.override_limits;
     delete [] rot.hard_limit_list;
-
-    if(rot.act_positions != nullptr) delete rot.act_positions;
-    if(rot.relp != nullptr) delete rot.relp;
-    if(rot.dtg != nullptr) delete rot.dtg;
-    if(rot.joint_act_positions != nullptr) delete rot.joint_act_positions;
 
     // AND DONE...
     emit this->periodic();
@@ -449,9 +483,9 @@ double* _GStat::get_rel_position(double* act_position, double* g5x_offset
     w = act_position[8] - g5x_offset[8] - tool_offset[8];
 
     if(this->stat->rotation_xy() != 0){
-        double t = radians(this->stat->rotation_xy());
+        double t = radians(-this->stat->rotation_xy());
         double xr = x*cos(t) - y*sin(t);
-        double yr = x*sin(t) - y*cos(t);
+        double yr = x*sin(t) + y*cos(t);
         x = xr;
         y = yr;
     }
@@ -493,7 +527,7 @@ void _GStat::check_for_modes(int& state, EMC_TASK_MODE_ENUM mode, EMC_TASK_MODE_
     state = -1;
 }
 
-void _GStat::set_jograte(unsigned int upm)
+void _GStat::set_jograte(float upm)
 {
     this->current_jog_rate = upm;
     emit this->jograte_changed(upm);
@@ -512,7 +546,7 @@ void _GStat::set_jog_increment_angular(unsigned int distance, string text)
     emit this->jogincrement_angular_changed(distance, text);
 }
 
-void _GStat::set_jog_increments(unsigned int distance, string text)
+void _GStat::set_jog_increments(float distance, string text)
 {
     this->current_jog_distance  = distance;
     this->current_jog_distance_text = text;
@@ -684,9 +718,9 @@ void _GStat::do_jog(int axisnum, int direction, double distance)
 
 }
 
-EMC_TASK_MODE_ENUM _GStat::get_jjogmode()
+EMC_TRAJ_MODE_ENUM _GStat::get_jjogmode()
 {
-    return this->stat->task_mode();
+    return this->stat->motion_mode();
 }
 
 int _GStat::jnum_for_axisnum(int axisnum)

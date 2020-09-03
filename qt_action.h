@@ -10,7 +10,7 @@ public:
     _Lcnc_Action(shared_ptr<_IStat> info);
 
     shared_ptr<_IStat> INFO;
-    shared_ptr<_GStat> STATUS;
+    _GStat* STATUS;
 
     shared_ptr<LinuxcncCommand> cmd;
     shared_ptr<LinuxcncError> error_channel;
@@ -21,6 +21,7 @@ public:
     void SET_MACHINE_HOMING(int joint);
     void SET_MACHINE_UNHOMED(int joint);
     void SET_AUTO_MODE();
+    void ENSURE_TRAJ_FREE_MODE();
     void TOGGLE_LIMITS_OVERRIDE();
     void SET_MDI_MODE();
     void SET_MANUAL_MODE();
@@ -42,7 +43,7 @@ public:
     void SET_RAPID_RATE(double rate) {this->cmd->rapidrate(rate / 100.0);}
     void SET_FEED_RATE(double rate) {this->cmd->feedrate(rate / 100.0);}
     void SET_SPINDLE_RATE(double rate, unsigned short number = 0) {this->cmd->spindleoverride(rate / 100.0, number);}
-    void SET_JOG_RATE(int rate) {this->STATUS->set_jograte(rate); }
+    void SET_JOG_RATE(float rate) {this->STATUS->set_jograte(rate); }
     void SET_JOG_RATE_ANGULAR(int rate) {this->STATUS->set_jograte_angular(rate);}
     void SET_JOG_INCR(double incr, string text);
     void SET_JOG_INCR_ANGULAR(double incr, string text);
@@ -81,6 +82,7 @@ public:
     void UPDATE_MACHINE_LOG(string text, int option = 0);
     void CALL_DIALOG(string command);
     void HIDE_POINTER();
+    EMC_TASK_MODE_ENUM ensure_mode(EMC_TASK_MODE_ENUM mode);
 
 private:
 
@@ -89,7 +91,6 @@ private:
 
     bool get_jog_info(int num, int& num_state);
     void jnum_check(int num, int& num_state);
-    EMC_TASK_MODE_ENUM ensure_mode(EMC_TASK_MODE_ENUM mode);
     void open_filter_program(string fname);
     void load_filter_result(string fname);
     void mktemp();

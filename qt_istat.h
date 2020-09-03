@@ -25,7 +25,9 @@ public:
     bool MACHINE_IS_LATHE = false;
     bool MACHINE_IS_METRIC = false;
     double MACHINE_UNIT_CONVERSION = 1.0;
-    double MACHINE_UNIT_CONVERSION_9 = 1.0;//?
+    double* MACHINE_UNIT_CONVERSION_9 = new double[9]{1, 1, 1
+                                                     ,1, 1, 1
+                                                     ,1, 1, 1};//?
     vector<char> AVAILABLE_AXES = {'X','Y','Z'};
     vector<unsigned short> AVAILABLE_JOINTS = {0,1,2};
     map<unsigned short, char> Get_NAME_FROM_JOINT = {{0,'X'}, {1,'Y'}, {2,'Z'}};
@@ -52,23 +54,23 @@ public:
     int* JOINT_SEQUENCE;
     vector<char> TRAJ_COORDINATES;
     int JOINT_COUNT;
-    float DEFAULT_LINEAR_JOG_VEL;
-    float MIN_LINEAR_JOG_VEL;
-    float MAX_LINEAR_JOG_VEL;
-    float DEFAULT_ANGULAR_JOG_VEL;
-    float MIN_ANGULAR_JOG_VEL;
-    float MAX_ANGULAR_JOG_VEL;
-    float MAX_TRAJ_VELOCITY;
+    int DEFAULT_LINEAR_JOG_VEL;
+    int MIN_LINEAR_JOG_VEL;
+    int MAX_LINEAR_JOG_VEL;
+    int DEFAULT_ANGULAR_JOG_VEL;
+    int MIN_ANGULAR_JOG_VEL;
+    int MAX_ANGULAR_JOG_VEL;
+    int MAX_TRAJ_VELOCITY;
     strings MDI_COMMAND_LIST;
     string TOOL_FILE_PATH;
     string POSTGUI_HALFILE_PATH;
 
     //double convert_machine_to_metric(double data);
     //double convert_machine_to_imperial(double data);
-    //double convert_metric_to_machine(double data);
-    //double convert_imperial_to_machine(double data);
+    double convert_metric_to_machine(double data);
+    double convert_imperial_to_machine(double data);
     double convert_units(double data) {return data*this->MACHINE_UNIT_CONVERSION;}
-
+    double* convert_units_9(double* data);
 
 private:
     string get_error_safe_setting(const char* heading, const char* detail, string def = "");

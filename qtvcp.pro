@@ -14,7 +14,13 @@ SOURCES += main.cpp \
     hal_glib.cpp \
     slot_test.cpp \
     qt_istat.cpp \
-    qt_action.cpp
+    qt_action.cpp \
+    widgets/file_manager.cpp \
+    widgets/gcode_editor.cpp \
+    widgets/mdi_line.cpp \
+    widgets/origin_offsetview.cpp \
+    widgets/simple_widgets.cpp \
+    widgets/virtualkeyboardwidget.cpp
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which as been marked deprecated (the exact warnings
@@ -33,7 +39,14 @@ HEADERS += \
     slot_test.h \
     qt_istat.h \
     core.h \
-    qt_action.h
+    qt_action.h \
+    widgets/file_manager.h \
+    widgets/gcode_editor.h \
+    widgets/mdi_line.h \
+    widgets/origin_offsetview.h \
+    widgets/simple_widgets.h \
+    widgets/virtualkeyboardwidget.h \
+    logs.h
 
 unix:!macx: LIBS += -L$$PWD/../linuxcnc/lib/ -llinuxcnc
 
@@ -44,3 +57,18 @@ unix:!macx: PRE_TARGETDEPS += $$PWD/../linuxcnc/lib/liblinuxcnc.a
 unix:!macx: LIBS += -L$$PWD/../linuxcnc/lib/ -llinuxcncini
 unix:!macx: LIBS += -L$$PWD/../linuxcnc/lib/ -lnml
 unix:!macx: LIBS += -L$$PWD/../linuxcnc/lib/ -llinuxcnchal
+
+unix:!macx: LIBS += -L$$PWD/../Qsci/ -lqscintilla2_qt5
+
+INCLUDEPATH += $$PWD/..
+DEPENDPATH += $$PWD/..
+
+RESOURCES += \
+    sources.qrc
+
+DEFINES += BOOST_ALL_DYN_LINK
+
+unix:!macx: LIBS += -L$$PWD/../../../../opt/boost_1_67/lib/ -lboost_system
+unix:!macx: LIBS += -L$$PWD/../../../../opt/boost_1_67/lib/ -lboost_log
+unix:!macx: LIBS += -L$$PWD/../../../../opt/boost_1_67/lib/ -lboost_filesystem
+unix:!macx: LIBS += -L$$PWD/../../../../opt/boost_1_67/lib/ -lboost_thread

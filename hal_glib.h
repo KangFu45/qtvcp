@@ -3,8 +3,6 @@
 
 #include <QObject>
 
-#define QT_NO_GEOM_VARIANT
-
 #include <vector>
 
 #include "emcmodule.h"
@@ -22,11 +20,11 @@ public:
     shared_ptr<LinuxcncStat> stat;
     shared_ptr<LinuxcncCommand> cmd;
 
-    unsigned int current_jog_rate = 15;
-    unsigned int current_angular_jog_rate = 360;
-    unsigned int current_jog_distance = 0;
+    float current_jog_rate = 15;
+    int current_angular_jog_rate = 360;
+    float current_jog_distance = 0.0;
     string current_jog_distance_text ;
-    unsigned int current_jog_distance_angular = 0;
+    int current_jog_distance_angular = 0;
     string current_jog_distance_angular_text ;
     short selected_joint = -1;
     char selected_axis ;
@@ -41,7 +39,7 @@ public:
         string file;
         bool paused;
         int line;
-        bool homed;
+        bool* homed;
         int tool_in_spindle;
         int tool_prep_number;
         int motion_mode;
@@ -81,18 +79,19 @@ public:
         double* relp;
         double* dtg;
         double* joint_act_positions;
+        double* joint_act_velocitys;
     }fresh;
 
     void  check_for_modes(int& state, EMC_TASK_MODE_ENUM mode,EMC_TASK_MODE_ENUM& premode);
     EMC_TASK_MODE_ENUM get_current_mode() {return this->fresh.mode;}
-    void set_jograte(unsigned int upm);
-    double get_jograte() {return this->current_jog_rate; }
+    void set_jograte(float upm);
+    float get_jograte() {return this->current_jog_rate; }
     void set_jograte_angular(unsigned int rate);
     double get_jograte_angular() {return this->current_angular_jog_rate; }
     double get_jog_increment_angular() {return this->current_jog_distance_angular; }
     void set_jog_increment_angular(unsigned int distance, string text);
-    void set_jog_increments(unsigned int distance, string text);
-    double get_jog_increment() {return this->current_jog_distance; }
+    void set_jog_increments(float distance, string text);
+    float get_jog_increment() {return this->current_jog_distance; }
     void set_selected_joint(short data);
     int get_selected_joint() {return this->selected_joint; }
     void set_selected_axis(char data);
@@ -124,7 +123,7 @@ public:
     void set_tool_touchoff(int tool, char axis, int value);
     void set_axis_origin(char axis, int value);
     void do_jog(int axisnum, int direction, double distance = 0);
-    EMC_TASK_MODE_ENUM get_jjogmode();
+    EMC_TRAJ_MODE_ENUM get_jjogmode();
     int jnum_for_axisnum(int axisnum);
     void get_jog_info(int axisnum);
     double* get_probed_position_with_offsets();
@@ -170,10 +169,10 @@ signals:
     void interp_reading();
     void interp_waiting();
 
-    void jograte_changed(unsigned int);
-    void jograte_angular_changed(unsigned int);
-    void jogincrement_changed(unsigned int, string);
-    void jogincrement_angular_changed(unsigned int, string);
+    void jograte_changed(float);
+    void jograte_angular_changed(int);
+    void jogincrement_changed(float, string);
+    void jogincrement_angular_changed(int, string);
 
     void joint_selection_changed(short);
     void axis_selection_changed(char);
@@ -195,7 +194,11 @@ signals:
     void spindle_control_changed(bool, int);
     void current_feed_rate(double);
     void current_x_rel_position(double);
-    void current_position(double* ,double*, double*, double*);
+    //arg1:absolute position
+    //arg2:tool position
+    //arg2:dtg
+    //arg4;joint actual position
+    void current_position_and_velocity(double* ,double*, double*, double*, double*);
 
     void current_z_rotation(double);
     void requested_spindle_speed_changed(double);
@@ -224,15 +227,15 @@ signals:
     void metric_mode_changed(bool);
     void user_system_changed(int);
 
-    void mdi_line_selected();
-    void gcode_line_selected();
-    void graphics_line_selected();
+    void mdi_line_selected(string, string);
+    void gcode_line_selected(int);
+    void graphics_line_selected(int);
     void graphics_gcode_error();
     void graphics_gcode_properties();
     void graphics_view_changed();
     void mdi_history_changed();
     void machine_log_changed();
-    void update_machine_log();
+    void update_machine_log(string);
     void move_text_lineup();
     void move_text_linedown();
     void dialog_request();
@@ -246,6 +249,8 @@ signals:
     void error(string);
     void general();
     void forced_update_sig();
+
+    void file_edit_exit();
 };
 
 #endif // HAL_GLIB_H

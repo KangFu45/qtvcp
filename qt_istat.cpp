@@ -1,6 +1,7 @@
 #include "qt_istat.h"
 
 #include <QFileInfo>
+#include <QDebug>
 
 _IStat::_IStat(const char *inipath)
 {
@@ -16,7 +17,7 @@ _IStat::_IStat(const char *inipath)
 
 void _IStat::update()
 {
-    this->MDI_HISTORY_PATH = this->inifile->Ini_find("DISPLA", "MDI_HISTORY_FILE", "~/.axis_mdi_history");
+    this->MDI_HISTORY_PATH = this->inifile->Ini_find("DISPLAY", "MDI_HISTORY_FILE", "~/.axis_mdi_history");
     this->QTVCP_LOG_HISTORY_PATH = this->inifile->Ini_find("DISPLAY", "LOG_FILE", "~/qtvcp.log");
     this->MACHINE_LOG_HISTORY_PATH = this->inifile->Ini_find("DISPLAY", "MACHINE_LOG_PATH", "~/.machine_log_history");
     this->PREFERENCE_PATH = this->inifile->Ini_find("DISPLAY", "PREFERENCE_FILE_PATH");
@@ -37,11 +38,27 @@ void _IStat::update()
     if(units=="mm" || units=="metric" || units=="1.0"){
         this->MACHINE_IS_METRIC = true;
         this->MACHINE_UNIT_CONVERSION = 1.0/25.4;
-        //this->MACHINE_UNIT_CONVERSION_9
+        this->MACHINE_UNIT_CONVERSION_9[0] = 1.0/25.4;
+        this->MACHINE_UNIT_CONVERSION_9[1] = 1.0/25.4;
+        this->MACHINE_UNIT_CONVERSION_9[2] = 1.0/25.4;
+        this->MACHINE_UNIT_CONVERSION_9[3] = 1.0;
+        this->MACHINE_UNIT_CONVERSION_9[4] = 1.0;
+        this->MACHINE_UNIT_CONVERSION_9[5] = 1.0;
+        this->MACHINE_UNIT_CONVERSION_9[6] = 1.0/25.4;
+        this->MACHINE_UNIT_CONVERSION_9[7] = 1.0/25.4;
+        this->MACHINE_UNIT_CONVERSION_9[8] = 1.0/25.4;
     } else{
         this->MACHINE_IS_METRIC = false;
         this->MACHINE_UNIT_CONVERSION = 25.4;
-        //this->MACHINE_UNIT_CONVERSION_9
+        this->MACHINE_UNIT_CONVERSION_9[0] = 25.4;
+        this->MACHINE_UNIT_CONVERSION_9[1] = 25.4;
+        this->MACHINE_UNIT_CONVERSION_9[2] = 25.4;
+        this->MACHINE_UNIT_CONVERSION_9[3] = 1.0;
+        this->MACHINE_UNIT_CONVERSION_9[4] = 1.0;
+        this->MACHINE_UNIT_CONVERSION_9[5] = 1.0;
+        this->MACHINE_UNIT_CONVERSION_9[6] = 25.4;
+        this->MACHINE_UNIT_CONVERSION_9[7] = 25.4;
+        this->MACHINE_UNIT_CONVERSION_9[8] = 25.4;
     }
     string axes = this->inifile->Ini_find("TRAJ", "COORDINATES");
     //TODO: this->AVAILABLE_AXES
@@ -106,7 +123,7 @@ void _IStat::update()
 
 //********************helper function*******************
 
-string _IStat:: get_error_safe_setting(const char* heading, const char* detail, string def)
+string _IStat::get_error_safe_setting(const char* heading, const char* detail, string def)
 {
     string res = this->inifile->Ini_find(heading, detail);
     if(res.empty())
@@ -114,3 +131,17 @@ string _IStat:: get_error_safe_setting(const char* heading, const char* detail, 
     return res;
 }
 
+double _IStat::convert_metric_to_machine(double data)
+{
+    if(this->MACHINE_IS_METRIC)
+        return data;
+    else
+        return data * (1/25.4);
+}
+
+double* _IStat::convert_units_9(double* data)
+{
+    for(int i=0; i<9; ++i)
+        data[i] = data[i] * this->MACHINE_UNIT_CONVERSION_9[i];
+    return data;
+}

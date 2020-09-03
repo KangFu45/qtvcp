@@ -1,13 +1,22 @@
 #include "qt_action.h"
 
+#include <iostream>
+#include <fstream>
+
+#include <QDebug>
+
+#include "logs.h"
+
+extern src::severity_logger< severity_level > slog;
+
 _Lcnc_Action::_Lcnc_Action(shared_ptr<_IStat> info)
 {
-    shared_ptr<_GStat> status(new _GStat);
+    STATUS = new _GStat;
+    INFO = info;
+    this->cmd = STATUS->cmd;
     shared_ptr<LinuxcncError> error(new LinuxcncError);
-    this->INFO = info;
-    this->STATUS = status;
-    this->cmd = this->STATUS->cmd;
     this->error_channel = error;
+    this->error_channel->Error_poll();
 }
 
 void _Lcnc_Action::SET_ESTOP_STATE(bool state)
@@ -30,29 +39,29 @@ void _Lcnc_Action::SET_MACHINE_HOMING(int joint)
 {
     this->ensure_mode(EMC_TASK_MODE_MANUAL);
     this->cmd->teleop_enable(false);
-    if(!bool(this->INFO->HOME_ALL_FLAG) && joint == -1){
+    if(!bool(INFO->HOME_ALL_FLAG) && joint == -1){
         if(!this->home_all_warning_flag){
             this->home_all_warning_flag = true;
-            emit this->STATUS->error("Home-all not available according to INI Joint Home sequence Set the joint sequence in the INI or modify the screen for individual home buttons to avoid this warning Press again to home Z axis Joint");
+            emit STATUS->error("Home-all not available according to INI Joint Home sequence Set the joint sequence in the INI or modify the screen for individual home buttons to avoid this warning Press again to home Z axis Joint");
         }
         else{
-            if(this->STATUS->is_all_homed_()){
+            if(STATUS->is_all_homed_()){
                 this->home_all_warning_flag = false;
                 return;
             }
             // so linuxcnc is misonfigured or the Screen is built wrong (needs individual home buttons)
             // now we will fake individual home buttons by homing joints one at a time
             // but always start will Z - on a mill it's safer
-            int zj = this->INFO->GET_JOINT_FROM_NAME.find('Z')->second;
-            bool* homeds = this->STATUS->stat->homed();//manual delete
+            int zj = INFO->GET_JOINT_FROM_NAME.find('Z')->second;
+            bool* homeds = STATUS->stat->homed();//manual delete
             if(!homeds[zj]){
-                //log.info('Homing Joint: {}'.format(zj))
+                BOOST_LOG_SEV(slog, normal) << "Homing Joint: "<< zj;
                 this->cmd->home(zj);
-                emit this->STATUS->error("Home-all not available according to INI Joint Home sequence Press again to home next Joint");
+                emit STATUS->error("Home-all not available according to INI Joint Home sequence Press again to home next Joint");
                 return;
             }
-            int length = this->INFO->AVAILABLE_JOINTS.size();
-            int* seqs= this->INFO->JOINT_SEQUENCE_LIST;
+            int length = INFO->AVAILABLE_JOINTS.size();
+            int* seqs= INFO->JOINT_SEQUENCE_LIST;
             for(int num = 0; num<length; ++num){
                 int j = seqs[num];
                 // at the end so all homed
@@ -65,10 +74,10 @@ void _Lcnc_Action::SET_MACHINE_HOMING(int joint)
                 if(j == zj) continue;
                 // ok home it then stop and wait for next button push
                 if(!homeds[j]){
-                    //log.info('Homing Joint: {}'.format(j))
+                    BOOST_LOG_SEV(slog, normal) << "Homing Joint: "<< j;
                     this->cmd->home(j);
                     if(this->home_all_warning_flag)
-                        emit this->STATUS->error("Home-all not available according to INI Joint Home sequence Press again to home next Joint");
+                        emit STATUS->error("Home-all not available according to INI Joint Home sequence Press again to home next Joint");
                     break;
                 }
             }
@@ -77,7 +86,7 @@ void _Lcnc_Action::SET_MACHINE_HOMING(int joint)
         }
     }
     else{
-        //log.info('Homing Joint: {}'.format(joint))
+        BOOST_LOG_SEV(slog, normal) << "Homing Joint: "<< joint;
         this->cmd->home(joint);
     }
 }
@@ -98,15 +107,15 @@ void _Lcnc_Action::SET_AUTO_MODE()
 // if called with flag set and now off hard limits - resets the flag
 void _Lcnc_Action::TOGGLE_LIMITS_OVERRIDE()
 {
-    if(this->STATUS->is_limits_override_set() && this->STATUS->is_hard_limits_tripped())
-        emit this->STATUS->error("Can Not Reset Limits Override - Still On Hard Limits");
-    else if(!(this->STATUS->is_limits_override_set()) && this->STATUS->is_hard_limits_tripped())
+    if(STATUS->is_limits_override_set() && STATUS->is_hard_limits_tripped())
+        emit STATUS->error("Can Not Reset Limits Override - Still On Hard Limits");
+    else if(!(STATUS->is_limits_override_set()) && STATUS->is_hard_limits_tripped())
     {
-        emit this->STATUS->error("Hard Limits Are Overridden!");
+        emit STATUS->error("Hard Limits Are Overridden!");
         this->cmd->override_limits();
     }
     else{
-        emit this->STATUS->error("Hard Limits Are Reset To Active!");
+        emit STATUS->error("Hard Limits Are Reset To Active!");
         this->cmd->override_limits();
     }
 }
@@ -129,26 +138,25 @@ void _Lcnc_Action::CALL_MDI(string code)
 
 int _Lcnc_Action::CALL_MDI_WAIT(string code, unsigned int time)
 {
-    //log.debug('MDI_WAIT_COMMAND= {}, maxt = {}'.format(code, time))
+    BOOST_LOG_SEV(slog, normal) << "MDI_WAIT_COMMAND= " << code <<", maxt = " <<time;
     this->ensure_mode(EMC_TASK_MODE_MDI);
     //log.debug('MDI_COMMAND: {}'.format(l))
     this->cmd->mdi(code);
     int result = this->cmd->wait_complete(time);
     if(result == -1){
-        //log.debug('MDI_COMMAND_WAIT timeout past {} sec. Error: {}'.format( time, result))
+        BOOST_LOG_SEV(slog, normal) << "MDI_WAIT_COMMAND timeout past "<<time <<"sec. Error: "<<result;
         this->ABORT();
     }
     else if(result == RCS_DONE){
-        //log.debug('MDI_COMMAND_WAIT RCS error: {}'.format( time, result))
+        BOOST_LOG_SEV(slog, normal) << "MDI_WAIT_COMMAND RCS error: " <<result;
         return -1;
     }
     string res = this->error_channel->Error_poll();
-    if (res.empty()){
-        emit this->STATUS->error("error_channel().poll()");
-        //log.error('MDI_COMMAND_WAIT Error channel: {}'.format(result[1]))
+    if (!res.empty()){
+        emit STATUS->error("error_channel().poll()");
+        BOOST_LOG_SEV(slog, error) << "MDI_WAIT_COMMAND Error channel: "<<res;
         return -1;
     }
-
     return 0;
 }
 
@@ -158,28 +166,28 @@ void _Lcnc_Action::CALL_INI_MDI(unsigned int number)
 
 int _Lcnc_Action::CALL_OWORD(string code, unsigned int time )
 {
-    //log.debug('OWORD_COMMAND= {}'.format(code))
+    BOOST_LOG_SEV(slog, normal) << "OWORD_COMMAND= "<<code;
     this->ensure_mode(EMC_TASK_MODE_MDI);
     this->cmd->mdi(code);
-    this->STATUS->stat->poll();
-    while (this->STATUS->stat->exec_state() == EMC_TASK_EXEC_WAITING_FOR_MOTION_AND_IO
-           || this->STATUS->stat->exec_state() == EMC_TASK_EXEC_WAITING_FOR_MOTION) {
+    STATUS->stat->poll();
+    while (STATUS->stat->exec_state() == EMC_TASK_EXEC_WAITING_FOR_MOTION_AND_IO
+           || STATUS->stat->exec_state() == EMC_TASK_EXEC_WAITING_FOR_MOTION) {
         int result = this->cmd->wait_complete(time);
         if(result == -1){
-            //log.debug('MDI_COMMAND_WAIT timeout past {} sec. Error: {}'.format( time, result))
+            BOOST_LOG_SEV(slog, error) << "Oword timeout oast () Error = #"<<result;
             this->ABORT();
         }
-        else if(result == RCS_DONE){
-            //log.debug('MDI_COMMAND_WAIT RCS error: {}'.format( time, result))
+        else if(result == RCS_ERROR){
+            BOOST_LOG_SEV(slog, error) << "Oword RCS Error = "<<result;
             return -1;
         }
         string res = this->error_channel->Error_poll();
-        if (res.empty()){
-            emit this->STATUS->error("error_channel().poll()");
-            //log.error('MDI_COMMAND_WAIT Error channel: {}'.format(result[1]))
+        if (!res.empty()){
+            emit STATUS->error("error_channel().poll()");
+            BOOST_LOG_SEV(slog, error) << "Oword Error: "<<res;
             return -1;
         }
-        this->STATUS->stat->poll();
+        STATUS->stat->poll();
     }
     //TODO:
     //int result = this->cmd->wait_complete(time);
@@ -196,19 +204,33 @@ void _Lcnc_Action::OPEN_PROGRAM(string fname)
 {
     this->prefilter_path = fname;
     this->ensure_mode(EMC_TASK_MODE_AUTO);
-    //TODO:
+    // just .ngc file
+    BOOST_LOG_SEV(slog, normal) << "Load program "<< fname;
+    this->cmd->program_open(fname.c_str(), fname.size());
+    if(STATUS->stat->file() == fname)
+        emit STATUS->file_loaded(fname.c_str());
 }
 
 void _Lcnc_Action::SAVE_PROGRAM(string source, string fname)
 {
-    //TODO::
+    if(source.empty()) return;
+    //if(fname.find(".") == -1) fname += ".ngc";
+
+    ofstream outfile;
+    outfile.open(fname.c_str(), ios_base::out | ios_base::trunc);
+    if(outfile.is_open()){
+        outfile<< source.c_str();
+        STATUS->update_machine_log("Saved: " + fname);
+        outfile.close();
+    }
+    //TODO: con't open execute
 }
 
 void _Lcnc_Action::SET_AXIS_ORIGIN(char axis, int value)
 {
     string m1("XYZABCUVW");
     if((axis == ' ') || m1.find(axis) == m1.npos){
-        //log.warning("Couldn't set orgin -axis >{}< not recognized:".format(axis))
+        BOOST_LOG_SEV(slog, warning) << "Couldn't set orgin -axis "<< axis <<"not recognized";
         return;
     }
     string m("G10 L20 P0 ");
@@ -229,7 +251,7 @@ void _Lcnc_Action::SET_TOOL_OFFSET(char axis, int value, bool fixture)
     string m("G10 L");
     m += lnum;
     m += " P";
-    m += to_string(this->STATUS->stat->tool_in_spindle());
+    m += to_string(STATUS->stat->tool_in_spindle());
     m += " ";
     m += axis;
     m += to_string(value);
@@ -247,7 +269,7 @@ void _Lcnc_Action::SET_TOOL_OFFSET(char axis, int value, bool fixture)
 void _Lcnc_Action::SET_DIRECT_TOOL_OFFSET(char axis, int value)
 {
     string m("G10 L1 P");
-    m += to_string(this->STATUS->get_current_tool());
+    m += to_string(STATUS->get_current_tool());
     m += " ";
     m += axis;
     m += to_string(value);
@@ -263,23 +285,23 @@ void _Lcnc_Action::SET_DIRECT_TOOL_OFFSET(char axis, int value)
 
 void _Lcnc_Action::RUN(unsigned int line)
 {
-    if(!this->STATUS->is_auto_mode())
+    if(!STATUS->is_auto_mode())
         this->ensure_mode(EMC_TASK_MODE_AUTO);
-    if(this->STATUS->is_auto_paused() && line == 0){
+    if(STATUS->is_auto_paused() && line == 0){
         this->cmd->emcauto(LOCAL_AUTO_STEP);
         return;
     }
-    else if(!this->STATUS->is_auto_running())
+    else if(!STATUS->is_auto_running())
         this->cmd->emcauto(LOCAL_AUTO_RUN, line);
 }
 
 void _Lcnc_Action::STEP()
 {
-    if(this->STATUS->is_auto_running() && !this->STATUS->is_auto_paused()){
+    if(STATUS->is_auto_running() && !STATUS->is_auto_paused()){
         this->cmd->emcauto(LOCAL_AUTO_PAUSE);
         return;
     }
-    if(this->STATUS->is_auto_paused())
+    if(STATUS->is_auto_paused())
         this->cmd->emcauto(LOCAL_AUTO_STEP);
 }
 
@@ -290,25 +312,25 @@ void _Lcnc_Action::ABORT(){
 
 void _Lcnc_Action::PAUSE()
 {
-    if(!this->STATUS->stat->paused())
+    if(!STATUS->stat->paused())
         this->cmd->emcauto(LOCAL_AUTO_PAUSE);
     else{
-        //log.debug('resume')
+        BOOST_LOG_SEV(slog, normal) << "resume";
         this->cmd->emcauto(LOCAL_AUTO_RESUME);
     }
 }
 
 void _Lcnc_Action::SET_JOG_INCR(double incr, string text)
 {
-    this->STATUS->set_jog_increments(incr, text);
-    for(int i=0; i<this->STATUS->stat->joints(); ++i)
+    STATUS->set_jog_increments(incr, text);
+    for(int i=0; i<STATUS->stat->joints(); ++i)
         this->STOP_JOG(i);
 }
 
 void _Lcnc_Action::SET_JOG_INCR_ANGULAR(double incr, string text)
 {
-    this->STATUS->set_jog_increment_angular(incr, text);
-    for(int i=0; i<this->STATUS->stat->joints(); ++i)
+    STATUS->set_jog_increment_angular(incr, text);
+    for(int i=0; i<STATUS->stat->joints(); ++i)
         this->STOP_JOG(i);
 }
 
@@ -358,7 +380,7 @@ void _Lcnc_Action::ZERO_G5X_OFFSET(int num)
     string clear_command("G10 L2 P");
     clear_command += to_string(num);
     clear_command += " R0";
-    foreach (const char& a, this->INFO->AVAILABLE_AXES) {
+    foreach (const char& a, INFO->AVAILABLE_AXES) {
         clear_command += " ";
         clear_command += a;
         clear_command += "0";
@@ -372,7 +394,7 @@ void _Lcnc_Action::ZERO_G5X_OFFSET(int num)
 
 EMC_TASK_MODE_ENUM _Lcnc_Action::RECORD_CURRENT_MODE()
 {
-    EMC_TASK_MODE_ENUM mode = this->STATUS->get_current_mode();
+    EMC_TASK_MODE_ENUM mode = STATUS->get_current_mode();
     this->last_mode = mode;
     return mode;
 }
@@ -384,12 +406,12 @@ void _Lcnc_Action::RESTORE_RECORDED_MODE()
 
 void _Lcnc_Action::SET_SELECTED_JOINT(int data)
 {
-    this->STATUS->set_selected_joint(data);
+    STATUS->set_selected_joint(data);
 }
 
 void _Lcnc_Action::SET_SELECTED_AXIS(int data)
 {
-    this->STATUS->set_selected_axis(data);
+    STATUS->set_selected_axis(data);
 }
 
 // jog based on STATUS's rate and distance
@@ -397,18 +419,19 @@ void _Lcnc_Action::SET_SELECTED_AXIS(int data)
 void _Lcnc_Action::DO_JOG(int joint_axis, int direction)
 {
     bool angular = false;
-    LinuxcncStat::JointData* data = this->STATUS->stat->joint();
+    LinuxcncStat::JointData* data = STATUS->stat->joint();
     if(int(data[joint_axis].jointType) == EMC_ANGULAR)
         angular = true;
 
     double distance, rate;
     if(angular){
-        distance = this->STATUS->get_jog_increment_angular();
-        rate = this->STATUS->get_jograte_angular()/60;
+        distance = STATUS->get_jog_increment_angular();
+        rate = STATUS->get_jograte_angular()/60;
     }
     else{
-        distance = this->STATUS->get_jog_increment();
-        rate = this->STATUS->get_jograte()/60;
+        distance = STATUS->get_jog_increment();
+        rate = STATUS->get_jograte();
+        //rate = STATUS->get_jograte()/60;
     }
     this->JOG(joint_axis, direction, rate, distance);
 }
@@ -431,7 +454,7 @@ void _Lcnc_Action::JOG(int jointnum, int direction, double rate, double distance
 }
 void _Lcnc_Action::STOP_JOG(int jointnum)
 {
-    if(this->STATUS->machine_is_on() && this->STATUS->is_man_mode()){
+    if(STATUS->machine_is_on() && STATUS->is_man_mode()){
         int j_or_a;
         bool jjogmode = this->get_jog_info(jointnum, j_or_a);
         this->cmd->jog(LOCAL_JOG_STOP, jjogmode, j_or_a);
@@ -484,7 +507,7 @@ void _Lcnc_Action::HIDE_POINTER()
 // 1==> joint jog, 0==> axis jog
 bool _Lcnc_Action::get_jog_info(int num, int& num_state)
 {
-    if(this->STATUS->stat->motion_mode() == EMC_TRAJ_MODE_FREE){
+    if(STATUS->stat->motion_mode() == EMC_TRAJ_MODE_FREE){
         this->jnum_check(num, num_state);
         return true;
     }
@@ -495,20 +518,22 @@ bool _Lcnc_Action::get_jog_info(int num, int& num_state)
 void _Lcnc_Action::jnum_check(int num, int& num_state)
 {
     // identity=1,serial=2,parallel=3,custom=4
-    //if(this->STATUS->stat->kinematics_type() != 1)
-    //    ;//log.warning("Joint jogging not supported for non-identity kinematics")
-    if(num > this->INFO->JOINT_COUNT){
-        num_state = -1;//log.error("Computed joint number={} exceeds jointcount={}".format(num,INFO.JOINT_COUNT))
+    if(STATUS->stat->kinematics_type() != KINEMATICS_IDENTITY)
+        BOOST_LOG_SEV(slog, warning) << "Joint jogging not supported for non-identity kinematics";
+    if(num > INFO->JOINT_COUNT){
+        BOOST_LOG_SEV(slog, error) << "computed joint number="<<num <<"exceeds jointcount="<<INFO->JOINT_COUNT;
+        num_state = -1;
         return;
     }
-    vector<unsigned short> joints = this->INFO->AVAILABLE_JOINTS;
+    vector<unsigned short> joints = INFO->AVAILABLE_JOINTS;
     bool in = false;
     for(unsigned short& joint : joints){
         if(joint == num)
             in = true;
     }
     if(!in){
-        num_state = -1;//log.warning("Joint {} is not in available joints {}".format(num, INFO.AVAILABLE_JOINTS))
+        BOOST_LOG_SEV(slog, warning) << "Joint "<<num <<"is not in available joints ";
+        num_state = -1;
         return;
     }
     num_state = num;
@@ -518,7 +543,7 @@ EMC_TASK_MODE_ENUM _Lcnc_Action::ensure_mode(EMC_TASK_MODE_ENUM mode)
 {
     int state;
     EMC_TASK_MODE_ENUM premode;
-    this->STATUS->check_for_modes(state, mode, premode);
+    STATUS->check_for_modes(state, mode, premode);
     // TODO:Don't have return value and some modes in all instances , so only execute false state
     if(state == -1){
         this->cmd->mode(mode);
@@ -540,4 +565,10 @@ void _Lcnc_Action::load_filter_result(string fname)
 void _Lcnc_Action::mktemp()
 {
 
+}
+
+void _Lcnc_Action::ENSURE_TRAJ_FREE_MODE()
+{
+    if(STATUS->get_jjogmode() != EMC_TRAJ_MODE_TELEOP)
+        this->cmd->traj_mode(EMC_TRAJ_MODE_TELEOP);
 }

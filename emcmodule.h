@@ -26,6 +26,8 @@ using namespace std;
 
 typedef vector<string> strings;//TODO: isn't here
 
+#define QT_NO_GEOM_VARIANT
+
 #ifndef T_BOOL
 // The C++ standard probably doesn't specify the amount of storage for a 'bool',
 // and on some systems it might be more than one byte.  However, on x86 and
@@ -110,9 +112,6 @@ public:
     int task_paused() {return this->status.task.task_paused; }
     bool input_timeout() {return this->status.task.input_timeout; }
     double rotation_xy() {return this->status.task.rotation_xy; }
-    //double x_rotation_normal() {return this->status.task.x_rotation_normal; }
-    //double y_rotation_normal() {return this->status.task.y_rotation_normal; }
-    //double z_rotation_normal() {return this->status.task.z_rotation_normal; }
     double delay_left() {return this->status.task.delayLeft; }
     int queued_mdi_commands() {return this->status.task.queuedMDIcommands; }
 
@@ -121,7 +120,7 @@ public:
     double angular_units() {return this->status.motion.traj.angularUnits; }
     double cycle_time() {return this->status.motion.traj.cycleTime; }
     int joints() {return this->status.motion.traj.joints; }
-    int spindles() {return this->status.motion.traj.spindles; }
+    //int spindles() {return this->status.motion.traj.spindles; }
     int axis_mask() {return this->status.motion.traj.axis_mask; }
     EMC_TRAJ_MODE_ENUM motion_mode() {return this->status.motion.traj.mode; }
     bool enabled() {return this->status.motion.traj.enabled; }
@@ -232,6 +231,7 @@ public:
     double* dtg();
     double* joint_position();
     double* joint_actual_position();
+    double* joint_actual_velocity();
     double* probed_position();
     double* settings();
     double* tool_offset();
@@ -266,6 +266,8 @@ private:
 public:
     //Command_methods in emcmodule for python
     void debug(int level);
+    //FIX, remote gui, After move axis in mdi mode,
+    //then move axis for continue in manual mode, maybe motion buffer is error
     void teleop_enable(bool enable);
     void traj_mode(EMC_TRAJ_MODE_ENUM mode);
     bool state(EMC_TASK_STATE_ENUM state);
@@ -289,7 +291,7 @@ public:
     void unhome(int joint);
     bool jog(int fn, int jjogmode, int ja_value, double vel=0, double inc=0);
     void reset_interpreter();
-    bool program_open(char* file, int len);
+    bool program_open(const char* file, int len);
     bool emcauto(int fn, int line = -1);
     void set_optional_stop(bool state);
     void set_block_delete(int state);
