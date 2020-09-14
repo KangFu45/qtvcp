@@ -7,8 +7,14 @@
 
 #include "emcmodule.h"
 
-//TODO: PI isn't here
+//TODO: 放在合适的地方
 const auto PI = 3.141592653589793238;
+
+/*
+原文件：linuxcnc/lib/python/hal_glib.py
+对状态缓冲区进行再一次的封装，定义一些基础的信号。
+python用gobject来传递处理信号，这里就用qt的信号槽机制。
+*/
 
 class _GStat : public QObject
 {
@@ -20,7 +26,8 @@ public:
     shared_ptr<LinuxcncStat> stat;
     shared_ptr<LinuxcncCommand> cmd;
 
-    float current_jog_rate = 15;
+    //TODO:轴的移动速度类型应该是float，但传递一些值时，在Continue手动移动轴时无法停止。
+    int current_jog_rate = 15;
     int current_angular_jog_rate = 360;
     float current_jog_distance = 0.0;
     string current_jog_distance_text ;
@@ -85,7 +92,7 @@ public:
     void  check_for_modes(int& state, EMC_TASK_MODE_ENUM mode,EMC_TASK_MODE_ENUM& premode);
     EMC_TASK_MODE_ENUM get_current_mode() {return this->fresh.mode;}
     void set_jograte(float upm);
-    float get_jograte() {return this->current_jog_rate; }
+    int get_jograte() {return this->current_jog_rate; }
     void set_jograte_angular(unsigned int rate);
     double get_jograte_angular() {return this->current_angular_jog_rate; }
     double get_jog_increment_angular() {return this->current_jog_distance_angular; }

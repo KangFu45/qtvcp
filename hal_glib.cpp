@@ -529,6 +529,7 @@ void _GStat::check_for_modes(int& state, EMC_TASK_MODE_ENUM mode, EMC_TASK_MODE_
 
 void _GStat::set_jograte(float upm)
 {
+    //TODO: fix if current_jog_rate is int, can't stop in continue mode
     this->current_jog_rate = upm;
     emit this->jograte_changed(upm);
 }

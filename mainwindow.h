@@ -9,6 +9,12 @@ namespace Ui {
 class MainWindow;
 }
 
+/*
+主窗口在原qtvcp中是被设计成一个通用的平台，能读取给定的.ui文件与动作，可以支持多种风格的界面。
+这里就给示教器设计了一个固定的界面。
+有一些控件的事件是在这里绑定的，可以放在自定义的控件绑定，这样代码会更清晰。
+*/
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT

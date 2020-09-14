@@ -13,6 +13,7 @@ const char* file = "/home/fukang/333.log";
 
 int main(int argc, char *argv[])
 {
+    //这是qt调用虚拟键盘的方式，但示教器不能用
     //qputenv("QT_IM_MODULE", QByteArray("qtvirtualkeyboard"));
     QApplication a(argc, argv);
 

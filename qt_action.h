@@ -4,6 +4,11 @@
 #include "qt_istat.h"
 #include "hal_glib.h"
 
+/*
+原文件：linuxcnc/lib/python/qtvcp/qt_action.py
+动作类，对命令缓冲区的再次封装，还有些命令没有写，比如主轴，探针的命令，示教器不需要。
+*/
+
 class _Lcnc_Action
 {
 public:

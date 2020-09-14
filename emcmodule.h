@@ -1,6 +1,15 @@
 #ifndef EMCMODULE_H
 #define EMCMODULE_H
 
+/*
+改写的文件：linuxcnc/src/emc/usr_intf/axis/extensions/emcmodule.cc
+原文件是作c++转python接口模块，是管理GUI的nml缓冲区的接口，原linuxcnc界面
+均使用python，现示教器无法安装pyqt5的开发环境，所以示教器界面开发使用c++。
+管理GUI的3个nml缓冲区（start，command，error），参照nml通信方式初始化与读写
+即可，指定nml配置文件及对应的缓冲区，一般无需作其他更改。
+若需要增加消息，可参考linuxcnc官方文档进行增加，一般开发新功能时才需要，如：长电三轴增加的工具坐标系转换功能
+*/
+
 #define ULAPI
 
 #include <inttypes.h>
@@ -24,7 +33,8 @@
 
 using namespace std;
 
-typedef vector<string> strings;//TODO: isn't here
+//TODO: 放在合适的地方
+typedef vector<string> strings;
 
 #define QT_NO_GEOM_VARIANT
 
@@ -68,6 +78,7 @@ typedef vector<string> strings;//TODO: isn't here
  */
 #pragma GCC diagnostic ignored "-Winvalid-offsetof"
 
+//配置文件管理类，即.ini文件
 class LinuxcncIni
 {
 public:
@@ -80,12 +91,14 @@ public:
     IniFile* i =  nullptr;
 };
 
+//状态缓冲区类，只读
 class LinuxcncStat
 {
 public:
     LinuxcncStat();
     ~LinuxcncStat() { delete c; }
 
+    //缓冲区刷新
     bool poll();
 
 public:
@@ -119,7 +132,7 @@ public:
     double linear_units() {return this->status.motion.traj.linearUnits; }
     double angular_units() {return this->status.motion.traj.angularUnits; }
     double cycle_time() {return this->status.motion.traj.cycleTime; }
-    int joints() {return this->status.motion.traj.joints; }
+    int joints() {return this->status.motion.traj.axes; }
     //int spindles() {return this->status.motion.traj.spindles; }
     int axis_mask() {return this->status.motion.traj.axis_mask; }
     EMC_TRAJ_MODE_ENUM motion_mode() {return this->status.motion.traj.mode; }
@@ -249,6 +262,14 @@ private:
     SpindleData Stat_spindle_one(int spindleno);
 };
 
+//命令缓冲区，读写
+/*
+TODO:当缓冲区为REMOTE时，
+在不归零时无法移动轴，报轴未选中的错。
+在MDI模式下移动轴后，无法在手动Continue模式下移动，报底层运动模式错误，给定距离手动移动后，可进行Continue移动。
+在AUTO模式下执行运动后，手动模式下不工作，也是报底层运动模式的错，重复上条错误的过程又能恢复正常。
+缓冲区为LOCAL时无上述错误，与硬件无关。
+*/
 class LinuxcncCommand
 {
 public:
@@ -307,6 +328,8 @@ public:
     int wait_complete(int timeout = 0);
 };
 
+//底层错误类，只读，只报底层的错，界面的错需要另外处理
+//TODO:缓冲区为REMOTE时，无错误信息，有错误类型，缓冲区为LOCAL无上述错误，与硬件无关。
 class LinuxcncError
 {
 public:

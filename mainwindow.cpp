@@ -531,8 +531,7 @@ void MainWindow::x_minus_jog_press()
 void MainWindow::x_jog_release()
 {
     if(STATUS->get_jog_increment() != 0.0) return;
-    //ACTION->DO_JOG(0, 0);
-    ACTION->STOP_JOG(0);
+    ACTION->DO_JOG(0, 0);
 }
 
 void MainWindow::x_plus_jog_press()

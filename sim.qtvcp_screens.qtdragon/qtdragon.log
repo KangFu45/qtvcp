@@ -1,5 +1,0 @@
-2020-07-10 17:23:42,359 - QTvcp - INFO - Logging to "/home/fukang/linuxcnc/configs/sim.qtvcp_screens.qtdragon/qtdragon.log"
-2020-07-10 17:23:43,058 - QTvcp - INFO - Base log level set to 20
-2020-07-10 17:23:43,059 - QtDesigner.QTVCP.QT_PSTAT - INFO - No handler file found
-2020-07-10 17:23:43,059 - QtDesigner.QTVCP.QT_PSTAT - CRITICAL - No UI file found - Did you add the .ui name/path?
-2020-07-10 17:23:43,059 - QtDesigner.QTVCP.QT_PSTAT - ERROR - Available built-in Machine Control Screens:
